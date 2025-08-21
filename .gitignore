@@ -1,0 +1,5 @@
+new_project/*
+!new_project/server.js
+!new_project/public/
+new_project/public/*
+!new_project/public/index.html
