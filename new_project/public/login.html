@@ -1,24 +1,14 @@
 <!DOCTYPE html>
-<html lang="ru" class="dark">
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Вход</title>
-  <script src="theme.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/theme.js"></script>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 min-h-screen flex items-center justify-center">
-  <button onclick="toggleTheme()" class="fixed top-2 right-2 px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded">Тема</button>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex items-center justify-center">
   <div class="bg-white dark:bg-gray-800 p-6 rounded shadow w-80">
-    <h1 class="text-xl font-bold mb-4 text-center">Вход</h1>
-    <form method="post" action="/login" class="space-y-4">
-      <input type="text" name="username" placeholder="Логин" class="w-full border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" required />
-      <input type="password" name="password" placeholder="Пароль" class="w-full border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" required />
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
-  <div class="bg-white p-6 rounded shadow w-80">
     <h1 class="text-xl font-bold mb-4 text-center">Вход</h1>
     <form method="post" action="/login" class="space-y-4">
       <input type="text" name="username" placeholder="Логин" class="w-full border p-2 rounded" required />
