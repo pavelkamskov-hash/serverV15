@@ -1,0 +1,5 @@
+new_project/*
+!new_project/config.json
+!new_project/config.js
+!new_project/server.py
+final_build.zip
