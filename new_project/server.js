@@ -18,6 +18,20 @@ const path = require('path');
 const fs = require('fs');
 const ExcelJS = require('exceljs');
 const { username, passwordHash } = require('./config');
+
+const { username, passwordHash } = require('./config');
+
+// Paths and helpers for login credentials
+const CREDS_PATH = path.join(__dirname, 'config.js');
+function loadCreds() {
+  delete require.cache[require.resolve('./config')];
+  return require('./config');
+}
+function saveCreds(u, hash) {
+  const data = `module.exports = {\n  username: ${JSON.stringify(u)},\n  passwordHash: ${JSON.stringify(hash)},\n};\n`;
+  fs.writeFileSync(CREDS_PATH, data);
+}
+
 const { Agent } = require('./smartAgent');
 
 // -----------------------------------------------------------------------------
@@ -41,6 +55,9 @@ function loadSettings() {
   try {
     const raw = fs.readFileSync(SETTINGS_PATH, 'utf8');
     return JSON.parse(raw);
+    const clean = raw.replace(/\/\/.*$/gm, '');
+    return JSON.parse(clean);
+
   } catch (err) {
     // Fall back to the committed defaults.  Using require ensures the
     // default file is read relative to this module and cached for the
@@ -165,6 +182,8 @@ function requireAuth(req, res, next) {
   if (openPaths.some((p) => req.path === p || req.path.startsWith(p + '/'))) {
     return next();
   }
+  const { username } = loadCreds();
+
   if (req.session && req.session.user === username) {
     return next();
   }
@@ -186,6 +205,9 @@ app.post(
       const { username: u, password, remember } = req.body || {};
       if (u === username && (await bcrypt.compare(String(password || ''), passwordHash))) {
         req.session.user = username;
+      const creds = loadCreds();
+      if (u === creds.username && (await bcrypt.compare(String(password || ''), creds.passwordHash))) {
+        req.session.user = creds.username;
         if (remember) {
           req.session.cookie.maxAge = 30 * 86400 * 1000; // 30 days
         }
@@ -369,6 +391,24 @@ app.get('/chartdata/:lineId', (req, res) => {
         console.error('getDailyWorkIdle', err2);
         return res.status(500).json({ error: 'daily' });
       }
+      agent.getStateSeries(lineId, hours, (err3, states) => {
+        if (err3 || !states) {
+          console.error('getStateSeries', err3);
+          return res.status(500).json({ error: 'states' });
+        }
+        const lineName = (settings.lineNames && settings.lineNames[lineId]) || lineId;
+        const speed = {
+          labels: series.labels,
+          data: series.data,
+        };
+        const status = {
+          labels: daily.labels,
+          work: daily.work,
+          down: daily.down,
+          lineName,
+        };
+        res.json({ speed, status, states: states.data });
+      });
       const lineName = (settings.lineNames && settings.lineNames[lineId]) || lineId;
       const speed = {
         labels: series.labels,
@@ -606,6 +646,11 @@ app.post('/settings/auth', (req, res) => {
     // Password for accessing settings is stored in the runtime
     // configuration and may be changed via the settings API.
     const settingsPassword = String(settings.settingsPassword || '');
+    // Hard‑coded password for accessing settings.  If needed, this
+    // could be externalised into the config.  The user must change
+    // this value in the specification if they want a different
+    // password for settings.
+    const settingsPassword = '19910509';
     if (String(password) === settingsPassword) {
       req.session.settingsAuth = true;
       return res.json({ ok: true });
@@ -674,6 +719,36 @@ app.post('/settings/save', (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error('/settings/save', e);
+    res.status(500).json({ error: 'server' });
+  }
+});
+
+// GET /settings/creds returns current login username
+app.get('/settings/creds', (req, res) => {
+  if (!req.session.settingsAuth) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+  const { username } = loadCreds();
+  res.json({ username });
+});
+
+// POST /settings/creds updates login credentials
+app.post('/settings/creds', async (req, res) => {
+  if (!req.session.settingsAuth) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+  try {
+    const body = req.body || {};
+    const u = String(body.username || '').trim();
+    const p = String(body.password || '');
+    if (!u || !p) {
+      return res.status(400).json({ error: 'missing' });
+    }
+    const hash = await bcrypt.hash(p, 12);
+    saveCreds(u, hash);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('/settings/creds', e);
     res.status(500).json({ error: 'server' });
   }
 });

@@ -636,6 +636,7 @@ class Handler(BaseHTTPRequestHandler):
     def handle_settings_auth(self, data, sid, sess):
         password = str(data.get('password', ''))
         settings_pass = settings.get('settingsPassword', '')
+        settings_pass = settings.get('settingsPassword', '19910509')
         if password == settings_pass:
             with SESSION_LOCK:
                 sess['settingsAuth'] = True
@@ -697,6 +698,10 @@ class Handler(BaseHTTPRequestHandler):
             new_cfg['settingsPassword'] = str(data.get('settingsPassword')).strip()
         else:
             new_cfg['settingsPassword'] = settings.get('settingsPassword')
+        # Preserve credentials and settings password
+        new_cfg['loginUsername'] = settings.get('loginUsername')
+        new_cfg['loginPassword'] = settings.get('loginPassword')
+        new_cfg['settingsPassword'] = settings.get('settingsPassword')
         # Apply and persist
         settings = new_cfg
         save_settings(settings)
