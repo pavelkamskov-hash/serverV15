@@ -1,9 +1,15 @@
 <!DOCTYPE html>
+<html lang="ru" class="dark">
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Настройки</title>
+  <script src="theme.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 min-h-screen p-4">
+  <button onclick="toggleTheme()" class="fixed top-2 right-2 px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded">Тема</button>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 text-gray-900 min-h-screen p-4">
@@ -11,6 +17,7 @@
   <!-- Authentication form -->
   <div id="authForm" class="space-y-4">
     <p>Введите пароль для доступа к настройкам:</p>
+    <input type="password" id="authPass" class="border p-2 rounded w-64 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" placeholder="Пароль" />
     <input type="password" id="authPass" class="border p-2 rounded w-64" placeholder="Пароль" />
     <button id="authSubmit" class="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">Войти</button>
     <p id="authError" class="text-red-600 hidden">Неверный пароль</p>
@@ -18,6 +25,43 @@
   <!-- Settings form -->
   <div id="settingsForm" class="space-y-4 hidden">
     <label class="block">Окно усреднения (сек):
+      <input id="windowSec" type="number" min="1" class="border p-2 rounded ml-2 w-32 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+      <span class="text-xs text-gray-500 dark:text-gray-400 block">Время (сек), за которое усредняется скорость. Чем больше значение, тем плавнее график.</span>
+    </label>
+    <label class="block">Порог запуска V_START (см/мин):
+      <input id="V_START" type="number" step="0.1" class="border p-2 rounded ml-2 w-32 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+      <span class="text-xs text-gray-500 dark:text-gray-400 block">Если усреднённая скорость превышает этот порог в течение delayStart, линия считается запущенной.</span>
+    </label>
+    <label class="block">Порог остановки V_STOP (см/мин):
+      <input id="V_STOP" type="number" step="0.1" class="border p-2 rounded ml-2 w-32 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+      <span class="text-xs text-gray-500 dark:text-gray-400 block">Если усреднённая скорость падает ниже этого порога в течение delayStop, линия считается остановленной.</span>
+    </label>
+    <label class="block">Задержка запуска (сек):
+      <input id="delayStart" type="number" min="0" class="border p-2 rounded ml-2 w-32 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+      <span class="text-xs text-gray-500 dark:text-gray-400 block">Минимальное время, в течение которого скорость должна быть выше V_START, чтобы зафиксировать запуск.</span>
+    </label>
+    <label class="block">Задержка остановки (сек):
+      <input id="delayStop" type="number" min="0" class="border p-2 rounded ml-2 w-32 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+      <span class="text-xs text-gray-500 dark:text-gray-400 block">Минимальное время, в течение которого скорость должна быть ниже V_STOP, чтобы зафиксировать остановку.</span>
+    </label>
+    <label class="block">Глубина графика (часы):
+      <select id="graphHours" class="border p-2 rounded ml-2 w-32 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
+        <option value="24">24</option>
+        <option value="48">48</option>
+      </select>
+      <span class="text-xs text-gray-500 dark:text-gray-400 block">Период, отображаемый на графике скорости.</span>
+    </label>
+    <label class="block">Тайм‑аут ожидания пакета (сек):
+      <input id="offlineTimeout" type="number" min="1" class="border p-2 rounded ml-2 w-32 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+      <span class="text-xs text-gray-500 dark:text-gray-400 block">Если пакеты не приходят дольше этого времени, линия считается остановленной.</span>
+    </label>
+    <label class="block">Telegram Token:
+      <input id="telegramToken" type="text" class="border p-2 rounded ml-2 w-64 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+      <span class="text-xs text-gray-500 dark:text-gray-400 block">Токен бота для отправки уведомлений (оставьте пустым, чтобы отключить).</span>
+    </label>
+    <label class="block">Telegram Chat ID:
+      <input id="telegramChatId" type="text" class="border p-2 rounded ml-2 w-64 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+      <span class="text-xs text-gray-500 dark:text-gray-400 block">ID чата, куда отправлять уведомления.</span>
       <input id="windowSec" type="number" min="1" class="border p-2 rounded ml-2 w-32" />
       <span class="text-xs text-gray-500 block">Время (сек), за которое усредняется скорость. Чем больше значение, тем плавнее график.</span>
     </label>
@@ -132,12 +176,14 @@
         nameInput.id = 'name_' + id;
         nameInput.value = names[id] || '';
         nameInput.placeholder = id;
+        nameInput.className = 'border p-1 rounded flex-1 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100';
         nameInput.className = 'border p-1 rounded flex-1';
         const prodInput = document.createElement('input');
         prodInput.type = 'text';
         prodInput.id = 'prod_' + id;
         prodInput.value = products[id] || '';
         prodInput.placeholder = 'Изделие';
+        prodInput.className = 'border p-1 rounded flex-1 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100';
         prodInput.className = 'border p-1 rounded flex-1';
         row.appendChild(checkbox);
         row.appendChild(label);
