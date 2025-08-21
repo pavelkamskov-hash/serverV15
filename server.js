@@ -16,6 +16,7 @@ const bcrypt = require('bcrypt');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+const json5 = require('json5');
 const ExcelJS = require('exceljs');
 const { username, passwordHash } = require('./config');
 const { Agent } = require('./smartAgent');
@@ -24,12 +25,12 @@ const { Agent } = require('./smartAgent');
 // Configuration loading/saving
 //
 // Runtime settings (smoothing parameters, line names, etc.) are stored in
-// JSON format in config.json.  The settings may be modified at runtime
+// JSON format in config.jsonc.  The settings may be modified at runtime
 // through the /settings API.  These helper functions load and persist
 // the settings atomically.  If the file does not exist, sensible
-// defaults are returned based on the committed version of config.json.
+// defaults are returned based on the committed version of config.jsonc.
 
-const SETTINGS_PATH = path.join(__dirname, 'config.json');
+const SETTINGS_PATH = path.join(__dirname, 'config.jsonc');
 
 /**
  * Load settings from disk.  If the settings file does not exist the
@@ -40,13 +41,12 @@ const SETTINGS_PATH = path.join(__dirname, 'config.json');
 function loadSettings() {
   try {
     const raw = fs.readFileSync(SETTINGS_PATH, 'utf8');
-    return JSON.parse(raw);
+    return json5.parse(raw);
   } catch (err) {
-    // Fall back to the committed defaults.  Using require ensures the
-    // default file is read relative to this module and cached for the
-    // lifetime of the process.
-    // eslint-disable-next-line import/no-dynamic-require
-    const defaults = require('./config.json');
+    // Fall back to the committed defaults.  Parse the bundled file and
+    // return a shallow copy.
+    const defaultsRaw = fs.readFileSync(path.join(__dirname, 'config.jsonc'), 'utf8');
+    const defaults = json5.parse(defaultsRaw);
     return Object.assign({}, defaults);
   }
 }
