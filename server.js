@@ -17,7 +17,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 const ExcelJS = require('exceljs');
-const { username, passwordHash } = require('./config');
+const { username, passwordHash, settingsPassword } = require('./config');
 const { Agent } = require('./smartAgent');
 
 // -----------------------------------------------------------------------------
@@ -603,12 +603,9 @@ app.get('/settings', (req, res) => {
 app.post('/settings/auth', (req, res) => {
   try {
     const { password } = req.body || {};
-    // Hard‑coded password for accessing settings.  If needed, this
-    // could be externalised into the config.  The user must change
-    // this value in the specification if they want a different
-    // password for settings.
-    const settingsPassword = '19910509';
-    if (String(password) === settingsPassword) {
+    // Compare against the configured settings password.  The plain
+    // password lives in config.js alongside the login credentials.
+    if (String(password) === String(settingsPassword)) {
       req.session.settingsAuth = true;
       return res.json({ ok: true });
     }
