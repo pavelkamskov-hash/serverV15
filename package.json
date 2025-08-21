@@ -1,0 +1,16 @@
+{
+  "name": "extrusion-monitor-clean",
+  "version": "1.0.0",
+  "description": "Clean build of extrusion monitor project with 13 automatic lines and smooth run/stop detection.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "sqlite3": "^5.1.2",
+    "bcrypt": "^5.1.0",
+    "exceljs": "^4.2.1"
+  }
+}
