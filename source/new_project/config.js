@@ -8,7 +8,7 @@ module.exports = {
   // User name required to access the dashboard.  A separate password is
   // used for the settings page and must be provided there.
   username: "zavod",
-  // Bcrypt hash of the password.  The default password matches the
-  // original build and may be updated by the operator.
-  passwordHash: "$2b$12$v6Afhzj5VUp7/k3yC469VeWcbfD2ro3y9R9v9bfniTvh1nsuucYOu"
+  // Bcrypt hash of the password.  The default password is
+  // "H0lzH0f2025" and may be updated by the operator.
+  passwordHash: "$2b$12$THUaYiNT7WZgfG/AFHRiBevLzGCtbbGEhONOoGPTHr3PSFaY9Swmq"
 };
