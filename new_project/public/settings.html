@@ -83,7 +83,10 @@
           document.getElementById('authForm').classList.add('hidden');
           document.getElementById('settingsForm').classList.remove('hidden');
           loadSettings(data);
+ 
+
           loadCreds();
+
         } else if (res.status === 401) {
           document.getElementById('authForm').classList.remove('hidden');
           document.getElementById('settingsForm').classList.add('hidden');
@@ -156,6 +159,7 @@
         console.error('authenticate', e);
       }
     }
+
     async function loadCreds() {
       try {
         const res = await fetch('/settings/creds');
@@ -233,7 +237,9 @@
     }
     document.getElementById('authSubmit').addEventListener('click', authenticate);
     document.getElementById('saveBtn').addEventListener('click', saveSettings);
+
     document.getElementById('passBtn').addEventListener('click', changePassword);
+
     checkAuth();
   </script>
 </body>

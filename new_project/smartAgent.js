@@ -291,6 +291,49 @@ class Agent {
   }
 
   /**
+   * Fetch a timeline of RUN/STOP states for the given number of hours.
+   * The method samples the state once per minute so that the resulting
+   * array lines up with the speed series and can be used to colour the
+   * chart background.
+   *
+   * @param {String} lineId Identifier of the line.
+   * @param {Number} hours  Number of hours of history to return.
+   * @param {Function} cb   Callback (err, { labels, data }).
+   */
+  getStateSeries(lineId, hours, cb) {
+    const now = Math.floor(Date.now() / 1000);
+    const toMinute = Math.floor(now / 60) * 60;
+    const fromMinute = toMinute - hours * 3600;
+    this.db.all(
+      `SELECT timestamp, isRunning FROM status_log WHERE lineId=? AND timestamp>=? AND timestamp<=? ORDER BY timestamp ASC`,
+      [lineId, fromMinute, toMinute],
+      (err, rows) => {
+        if (err) return cb(err);
+        this.db.get(
+          `SELECT isRunning FROM status_log WHERE lineId=? AND timestamp<? ORDER BY timestamp DESC LIMIT 1`,
+          [lineId, fromMinute],
+          (err2, lastRow) => {
+            if (err2) return cb(err2);
+            let state = lastRow ? Number(lastRow.isRunning) : 0;
+            const labels = [];
+            const data = [];
+            let idx = 0;
+            for (let t = fromMinute; t <= toMinute; t += 60) {
+              while (idx < rows.length && rows[idx].timestamp <= t) {
+                state = Number(rows[idx].isRunning);
+                idx += 1;
+              }
+              labels.push(new Date(t * 1000).toISOString());
+              data.push(state);
+            }
+            cb(null, { labels, data });
+          }
+        );
+      }
+    );
+  }
+
+  /**
    * Compute daily uptime and downtime for a line.  The algorithm uses
    * the status_log table to determine RUN/STOP segments and merges
    * segments shorter than 60 seconds into the opposite state.  The

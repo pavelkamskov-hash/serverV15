@@ -55,7 +55,17 @@
     "line11",
     "line12",
     "line13"
+
+  ]
+  ,
+  // Login credentials for the dashboard.  The username and password
+  // protect access to the UI.  The password is stored in plain
+  // text here for simplicity; change it to a strong secret before
+  // deploying.
+  "loginUsername": "zavod",
+  "loginPassword": "H0lzH0f2025",
   ],
+
   // Password required to access the settings page.  The same value
   // appears in server code as a fallback.  You can change it here
   // without touching the code.

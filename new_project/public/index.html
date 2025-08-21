@@ -46,12 +46,27 @@
           labels: [],
           datasets: [
             {
+
+              type: 'bar',
+              label: 'Состояние',
+              data: [],
+              yAxisID: 'y1',
+              backgroundColor: [],
+              borderWidth: 0,
+              barPercentage: 1,
+              categoryPercentage: 1,
+            },
+            {
+
               label: 'Скорость (см/мин)',
               data: [],
               borderColor: '#2563eb',
               backgroundColor: 'rgba(37, 99, 235, 0.2)',
               pointRadius: 0,
               fill: true,
+
+              yAxisID: 'y',
+
             },
           ],
         },
@@ -64,9 +79,28 @@
               beginAtZero: true,
               title: { display: true, text: 'см/мин' },
             },
+
+            y1: { display: false, min: 0, max: 1 },
+          },
+          plugins: {
+            legend: {
+              display: true,
+              labels: {
+                generateLabels: (chart) => {
+                  const labels = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+                  // remove state dataset entry
+                  labels.splice(0, 1);
+                  labels.push({ text: 'RUN', fillStyle: 'rgba(16, 185, 129, 0.3)', strokeStyle: 'rgba(16, 185, 129, 0.3)' });
+                  labels.push({ text: 'STOP', fillStyle: 'rgba(220, 38, 38, 0.3)', strokeStyle: 'rgba(220, 38, 38, 0.3)' });
+                  return labels;
+                },
+              },
+            },
+
           },
           plugins: {
             legend: { display: false },
+
           },
         },
       });
@@ -170,6 +204,13 @@
         const data = await res.json();
         // Speed chart
         speedChart.data.labels = data.speed.labels;
+        speedChart.data.datasets[1].data = data.speed.data;
+        if (Array.isArray(data.states)) {
+          const colors = data.states.map((s) => (s ? 'rgba(16, 185, 129, 0.3)' : 'rgba(220, 38, 38, 0.3)'));
+          speedChart.data.datasets[0].data = data.states.map(() => 1);
+          speedChart.data.datasets[0].backgroundColor = colors;
+        }
+
         speedChart.data.datasets[0].data = data.speed.data;
         speedChart.update();
         // Daily chart

@@ -17,6 +17,9 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 const ExcelJS = require('exceljs');
+
+const { username, passwordHash } = require('./config');
+
 // Paths and helpers for login credentials
 const CREDS_PATH = path.join(__dirname, 'config.js');
 function loadCreds() {
@@ -27,6 +30,7 @@ function saveCreds(u, hash) {
   const data = `module.exports = {\n  username: ${JSON.stringify(u)},\n  passwordHash: ${JSON.stringify(hash)},\n};\n`;
   fs.writeFileSync(CREDS_PATH, data);
 }
+
 const { Agent } = require('./smartAgent');
 
 // -----------------------------------------------------------------------------
@@ -49,8 +53,10 @@ const SETTINGS_PATH = path.join(__dirname, 'config.json');
 function loadSettings() {
   try {
     const raw = fs.readFileSync(SETTINGS_PATH, 'utf8');
+    return JSON.parse(raw);
     const clean = raw.replace(/\/\/.*$/gm, '');
     return JSON.parse(clean);
+
   } catch (err) {
     // Fall back to the committed defaults.  Using require ensures the
     // default file is read relative to this module and cached for the
@@ -195,6 +201,8 @@ app.post(
   async (req, res) => {
     try {
       const { username: u, password, remember } = req.body || {};
+      if (u === username && (await bcrypt.compare(String(password || ''), passwordHash))) {
+        req.session.user = username;
       const creds = loadCreds();
       if (u === creds.username && (await bcrypt.compare(String(password || ''), creds.passwordHash))) {
         req.session.user = creds.username;
@@ -381,6 +389,24 @@ app.get('/chartdata/:lineId', (req, res) => {
         console.error('getDailyWorkIdle', err2);
         return res.status(500).json({ error: 'daily' });
       }
+      agent.getStateSeries(lineId, hours, (err3, states) => {
+        if (err3 || !states) {
+          console.error('getStateSeries', err3);
+          return res.status(500).json({ error: 'states' });
+        }
+        const lineName = (settings.lineNames && settings.lineNames[lineId]) || lineId;
+        const speed = {
+          labels: series.labels,
+          data: series.data,
+        };
+        const status = {
+          labels: daily.labels,
+          work: daily.work,
+          down: daily.down,
+          lineName,
+        };
+        res.json({ speed, status, states: states.data });
+      });
       const lineName = (settings.lineNames && settings.lineNames[lineId]) || lineId;
       const speed = {
         labels: series.labels,
