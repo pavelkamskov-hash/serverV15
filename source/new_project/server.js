@@ -5,19 +5,15 @@
  * implements a simple REST API for ingesting pulse data, retrieving
  * smoothed speeds and uptime statistics, generating Excel reports and
  * configuring the smoothing parameters.  The application exposes a
- * minimal user interface in the `public/` directory and protects
- * access behind a login page.  A separate password is required to
- * access the settings page.
+* minimal user interface in the `public/` directory.
  */
 
 process.env.TZ = 'Etc/GMT-4';
 const express = require('express');
-const session = require('express-session');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 const ExcelJS = require('exceljs');
-const { username, password } = require('./config');
 const { Agent } = require('./smartAgent');
 const { generateReport } = require('./report');
 
@@ -157,67 +153,10 @@ const agent = new Agent(db, settings);
 // -----------------------------------------------------------------------------
 // Express application
 //
-// The API and UI are served by a single Express instance.  Sessions are
-// used to protect access to the dashboard and settings; login is
-// required for all routes except a handful of public endpoints.
+// The API and UI are served by a single Express instance.
 
 const app = express();
 app.use(express.json({ limit: '64kb' }));
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || 'extrusion-monitor-secret',
-    resave: false,
-    saveUninitialized: false,
-  })
-);
-
-/**
- * Middleware to enforce authentication for protected routes.  Requests
- * to the login page, the data ingestion endpoint and health endpoints
- * are permitted without a session. Static assets require a session.
- */
-function requireAuth(req, res, next) {
-  const openPaths = ['/login', '/data', '/healthz', '/time'];
-  if (openPaths.some((p) => req.path === p || req.path.startsWith(p + '/'))) {
-    return next();
-  }
-  if (req.session && req.session.user === username) {
-    return next();
-  }
-  return res.redirect('/login');
-}
-
-// -----------------------------------------------------------------------------
-// Authentication routes
-
-app.get('/login', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
-
-app.post(
-  '/login',
-  express.urlencoded({ extended: true }),
-  (req, res) => {
-    const { username: u, password: p, remember } = req.body || {};
-    if (u === username && String(p || '') === password) {
-      req.session.user = username;
-      if (remember) {
-        req.session.cookie.maxAge = 30 * 86400 * 1000; // 30 days
-      }
-      return res.redirect('/');
-    }
-    res.status(401).send('Unauthorized');
-  }
-);
-
-app.get('/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.redirect('/login');
-  });
-});
-
-// Apply authentication middleware
-app.use(requireAuth);
 
 // -----------------------------------------------------------------------------
 // Static files
@@ -226,9 +165,7 @@ app.use(requireAuth);
 // dependencies can be loaded directly.
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
-// The root of the application serves the dashboard.  Since
-// requireAuth runs before this route, users will be redirected to
-// /login if they are not authenticated.
+// The root of the application serves the dashboard.
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -506,16 +443,12 @@ app.get('/report/last30days', (req, res) => {
 // -----------------------------------------------------------------------------
 // Settings API
 
-// GET /settings serves the settings page.  Authentication via requireAuth
-// ensures only logged in users can access it.  Authorisation for
-// editing settings is enforced in the AJAX endpoints.
+// GET /settings serves the settings page.
 app.get('/settings', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'settings.html'));
 });
 
-// POST /settings/auth verifies the settings password.  If successful
-// the session gains a `settingsAuth` flag which is required to call
-// /settings/info and /settings/save.
+// POST /settings/auth verifies the settings password.
 app.post('/settings/auth', (req, res) => {
   try {
     const { password } = req.body || {};
@@ -525,7 +458,6 @@ app.post('/settings/auth', (req, res) => {
     // password for settings.
     const settingsPassword = '19910509';
     if (String(password) === settingsPassword) {
-      req.session.settingsAuth = true;
       return res.json({ ok: true });
     }
     return res.status(401).json({ error: 'wrong password' });
@@ -535,12 +467,8 @@ app.post('/settings/auth', (req, res) => {
   }
 });
 
-// GET /settings/info returns the current settings to authenticated
-// settings users.  Without settingsAuth this endpoint returns 401.
+// GET /settings/info returns the current settings.
 app.get('/settings/info', (req, res) => {
-  if (!req.session.settingsAuth) {
-    return res.status(401).json({ error: 'unauthorized' });
-  }
   res.json(settings);
 });
 
@@ -548,9 +476,6 @@ app.get('/settings/info', (req, res) => {
 // existing values; missing fields retain their previous values.  After
 // saving to disk the in‑memory settings and the agent are updated.
 app.post('/settings/save', (req, res) => {
-  if (!req.session.settingsAuth) {
-    return res.status(401).json({ error: 'unauthorized' });
-  }
   try {
     const body = req.body || {};
     // Validate and coerce incoming values.  Fallback to existing
