@@ -17,6 +17,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 const ExcelJS = require('exceljs');
+const { username, passwordHash } = require('./config');
 
 const { username, passwordHash } = require('./config');
 
@@ -182,6 +183,7 @@ function requireAuth(req, res, next) {
     return next();
   }
   const { username } = loadCreds();
+
   if (req.session && req.session.user === username) {
     return next();
   }
@@ -641,6 +643,9 @@ app.get('/settings', (req, res) => {
 app.post('/settings/auth', (req, res) => {
   try {
     const { password } = req.body || {};
+    // Password for accessing settings is stored in the runtime
+    // configuration and may be changed via the settings API.
+    const settingsPassword = String(settings.settingsPassword || '');
     // Hard‑coded password for accessing settings.  If needed, this
     // could be externalised into the config.  The user must change
     // this value in the specification if they want a different
@@ -702,6 +707,10 @@ app.post('/settings/save', (req, res) => {
         names[id] = String(body.lineNames[id] || settings.lineNames[id] || '');
       }
       newCfg.lineNames = names;
+    }
+    // Allow changing the password used to access the settings page.
+    if (typeof body.settingsPassword === 'string' && body.settingsPassword.trim()) {
+      newCfg.settingsPassword = String(body.settingsPassword);
     }
     settings = newCfg;
     // Persist the settings and update the agent

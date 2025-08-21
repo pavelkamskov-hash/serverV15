@@ -56,6 +56,10 @@
       <input id="telegramChatId" type="text" class="border p-2 rounded ml-2 w-64" />
       <span class="text-xs text-gray-500 block">ID чата, куда отправлять уведомления.</span>
     </label>
+    <label class="block">Новый пароль для настроек:
+      <input id="settingsPassword" type="password" class="border p-2 rounded ml-2 w-64" />
+      <span class="text-xs text-gray-500 block">Оставьте поле пустым, чтобы сохранить текущий пароль.</span>
+    </label>
     <div>
       <h2 class="font-semibold mt-4 mb-2">Линии</h2>
       <div id="linesConfig" class="space-y-2"></div>
@@ -105,6 +109,7 @@
       document.getElementById('offlineTimeout').value = data.offlineTimeout || 60;
       document.getElementById('telegramToken').value = data.telegramToken || '';
       document.getElementById('telegramChatId').value = data.telegramChatId || '';
+      document.getElementById('settingsPassword').value = '';
       // Build lines configuration
       const linesDiv = document.getElementById('linesConfig');
       linesDiv.innerHTML = '';
@@ -219,6 +224,8 @@
       // Telegram credentials
       cfg.telegramToken = document.getElementById('telegramToken').value.trim();
       cfg.telegramChatId = document.getElementById('telegramChatId').value.trim();
+      const newPass = document.getElementById('settingsPassword').value.trim();
+      if (newPass) cfg.settingsPassword = newPass;
       try {
         const res = await fetch('/settings/save', {
           method: 'POST',

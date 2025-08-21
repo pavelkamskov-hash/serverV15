@@ -55,7 +55,6 @@
     "line11",
     "line12",
     "line13"
-
   ]
   ,
   // Login credentials for the dashboard.  The username and password
@@ -64,11 +63,13 @@
   // deploying.
   "loginUsername": "zavod",
   "loginPassword": "H0lzH0f2025",
+  // Password required to access the settings page.  It can be changed
+  // through the settings UI and is persisted here.
   ],
-
   // Password required to access the settings page.  The same value
   // appears in server code as a fallback.  You can change it here
   // without touching the code.
+
   "settingsPassword": "19910509",
   // Product (номенклатура) assigned to each line.  Operators can
   // change these values via the settings page.  The current product

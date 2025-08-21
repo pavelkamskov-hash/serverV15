@@ -635,6 +635,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def handle_settings_auth(self, data, sid, sess):
         password = str(data.get('password', ''))
+        settings_pass = settings.get('settingsPassword', '')
         settings_pass = settings.get('settingsPassword', '19910509')
         if password == settings_pass:
             with SESSION_LOCK:
@@ -689,6 +690,14 @@ class Handler(BaseHTTPRequestHandler):
             new_cfg['telegramToken'] = str(data.get('telegramToken') or settings.get('telegramToken', ''))
         if 'telegramChatId' in data:
             new_cfg['telegramChatId'] = str(data.get('telegramChatId') or settings.get('telegramChatId', ''))
+        # Preserve dashboard credentials and optionally update the
+        # password used to access the settings page
+        new_cfg['loginUsername'] = settings.get('loginUsername')
+        new_cfg['loginPassword'] = settings.get('loginPassword')
+        if isinstance(data.get('settingsPassword'), str) and data.get('settingsPassword').strip():
+            new_cfg['settingsPassword'] = str(data.get('settingsPassword')).strip()
+        else:
+            new_cfg['settingsPassword'] = settings.get('settingsPassword')
         # Preserve credentials and settings password
         new_cfg['loginUsername'] = settings.get('loginUsername')
         new_cfg['loginPassword'] = settings.get('loginPassword')
