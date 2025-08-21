@@ -61,7 +61,7 @@
           responsive: true,
           maintainAspectRatio: false,
           scales: {
-            x: { display: true },
+            x: { type: 'category', display: true, ticks: { autoSkip: false } },
             y: {
               beginAtZero: true,
               title: { display: true, text: 'см/мин' },
@@ -107,13 +107,12 @@
                 afterBody: (items) => {
                   const idx = items[0].dataIndex;
                   const evs = dailyEvents[idx] || [];
-                  return evs.flatMap(ev => {
+                  return evs.map(ev => {
                     const h = Math.floor(ev.durMin / 60);
                     const m = ev.durMin % 60;
-                    if (ev.state === 1) {
-                      return [`Запуск: ${ev.startStr}`, `Работа: ${h} ч ${m} мин`];
-                    }
-                    return [`Остановка: ${ev.startStr}`, `Простой: ${h} ч ${m} мин`];
+                    const action = ev.state === 1 ? 'Запуск' : 'Остановка';
+                    const stateText = ev.state === 1 ? 'Работа' : 'Простой';
+                    return `${action}: ${ev.startStr} — ${stateText}: ${h} ч ${m} мин`;
                   });
                 }
               }
