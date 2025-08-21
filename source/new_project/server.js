@@ -393,8 +393,12 @@ app.get('/chartdata/:lineId', (req, res) => {
         return res.status(500).json({ error: 'daily' });
       }
       const lineName = (settings.lineNames && settings.lineNames[lineId]) || lineId;
+      const speedLabels = series.labels.map((ts) => {
+        const n = Number(ts);
+        return Number.isFinite(n) ? formatDateTime(n) : ts;
+      });
       const speed = {
-        labels: series.labels,
+        labels: speedLabels,
         data: series.data,
       };
       const status = {

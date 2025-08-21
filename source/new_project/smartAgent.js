@@ -393,8 +393,8 @@ class Agent {
                   start: seg.start,
                   end: seg.end,
                   state: seg.state,
-                  startStr: formatTime(seg.start),
-                  endStr: formatTime(seg.end),
+                  startStr: formatDateTime(seg.start),
+                  endStr: formatDateTime(seg.end),
                   durMin: Math.round(duration / 60),
                 });
               }
