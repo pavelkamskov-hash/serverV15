@@ -20,6 +20,7 @@ const fs = require('fs');
 const ExcelJS = require('exceljs');
 const { username, passwordHash } = require('./config');
 const { Agent } = require('./smartAgent');
+const { generateReport } = require('./report');
 
 const pad = (n) => String(n).padStart(2, '0');
 const TZ_OFFSET = '+04:00';
@@ -417,17 +418,13 @@ app.get('/chartdata/:lineId', (req, res) => {
 // -----------------------------------------------------------------------------
 // Excel reports
 
-// GET /report generates a detailed Excel report including per‑event
-// breakdowns of running and stopped segments as well as a summary
-// sheet.  The implementation mirrors the old system but uses the
-// merged segments logic to ignore short stops and runs.  The report
-// spans the last 30 days by default or can be constrained via
-// ?from=YYYY-MM-DD&to=YYYY-MM-DD.  Dates are interpreted in the
-// server's local timezone.
+// GET /report generates an Excel workbook with a 30‑day summary sheet
+// and individual sheets per line listing start/stop events.  Short
+// segments under 60 seconds are collapsed using the same logic as the
+// charts.  Optional from/to query parameters (YYYY‑MM‑DD) constrain the
+// range; by default the last 30 days are included.
 app.get('/report', async (req, res) => {
   try {
-    // Parse optional from/to parameters.  If omitted the last 30 days
-    // are included.  Convert ISO dates to UNIX timestamps.
     const parseDate = (s) => {
       if (!s) return null;
       const d = new Date(s);
@@ -437,118 +434,11 @@ app.get('/report', async (req, res) => {
     const nowSec = Math.floor(Date.now() / 1000);
     const toTs = parseDate(req.query.to) || nowSec;
     const fromTs = parseDate(req.query.from) || toTs - 30 * 86400;
-    const wb = new ExcelJS.Workbook();
-    const summary = wb.addWorksheet('Сводка 30 дней');
-    summary.columns = [
-      { header: 'Линия', key: 'line', width: 12 },
-      { header: 'Работа, ч', key: 'up', width: 14 },
-      { header: 'Простой, ч', key: 'down', width: 14 },
-      { header: '% простоя', key: 'pct', width: 12 },
-    ];
-    const lines = Array.from({ length: 13 }, (_, i) => `line${i + 1}`);
-    for (const lineId of lines) {
-      // Build a per‑line worksheet
-      const ws = wb.addWorksheet(lineId);
-      ws.columns = [
-        { header: 'Дата', key: 'date', width: 12 },
-        { header: 'Событие', key: 'ev', width: 18 },
-        { header: 'Время', key: 'when', width: 20 },
-        { header: 'Простой, мин', key: 'downtime', width: 14 },
-        { header: 'Изделие', key: 'product', width: 20 },
-      ];
-      const product = (settings.products && settings.products[lineId]) || '';
-      // Helper to add a row to the worksheet
-      function addRow(date, ev, whenTs, extra) {
-        const whenStr = formatDateTime(whenTs);
-        ws.addRow({ date, ev, when: whenStr, downtime: extra, product });
-      }
-      // Determine the state at fromTs
-      const initial = await new Promise((resolve) => {
-        db.get(
-          `SELECT isRunning FROM status_log WHERE lineId=? AND timestamp<? ORDER BY timestamp DESC LIMIT 1`,
-          [lineId, fromTs],
-          (err, row) => {
-            resolve(row ? Number(row.isRunning) : 0);
-          }
-        );
-      });
-      // Fetch all logs within the requested range
-      const logs = await new Promise((resolve) => {
-        db.all(
-          `SELECT timestamp,isRunning FROM status_log WHERE lineId=? AND timestamp>=? AND timestamp<=? ORDER BY timestamp ASC`,
-          [lineId, fromTs, toTs],
-          (err, rows) => {
-            resolve(rows || []);
-          }
-        );
-      });
-      // Iterate through each day between fromTs and toTs and build
-      // segments.  We'll accumulate total run/down time for the summary.
-      let totalRun = 0;
-      let totalDown = 0;
-      let prevState = initial;
-      for (let dayStart = Math.floor(fromTs / 86400) * 86400; dayStart < toTs; dayStart += 86400) {
-        const dayEnd = Math.min(dayStart + 86400, toTs);
-        const dayLabel = formatDate(dayStart);
-        // Build raw segments for this day
-        const dayEvents = logs.filter((ev) => ev.timestamp >= dayStart && ev.timestamp < dayEnd);
-        let state = prevState;
-        let segStart = dayStart;
-        const segments = [];
-        for (const ev of dayEvents) {
-          if (Number(ev.isRunning) !== state) {
-            segments.push({ start: segStart, end: ev.timestamp, state });
-            state = Number(ev.isRunning);
-            segStart = ev.timestamp;
-          }
-        }
-        segments.push({ start: segStart, end: dayEnd, state });
-        prevState = state;
-        // Merge short segments (<60s) into the opposite state
-        const merged = [];
-        for (const seg of segments) {
-          const dur = seg.end - seg.start;
-          if (seg.state === 1 && dur < 60) {
-            // short run => downtime
-            if (merged.length && merged[merged.length - 1].state === 0) {
-              merged[merged.length - 1].end = seg.end;
-            } else {
-              merged.push({ start: seg.start, end: seg.end, state: 0 });
-            }
-          } else if (seg.state === 0 && dur < 60) {
-            // short stop => uptime
-            if (merged.length && merged[merged.length - 1].state === 1) {
-              merged[merged.length - 1].end = seg.end;
-            } else {
-              merged.push({ start: seg.start, end: seg.end, state: 1 });
-            }
-          } else {
-            merged.push({ ...seg });
-          }
-        }
-        // Write merged segments to worksheet
-        for (let i = 0; i < merged.length; i++) {
-          const seg = merged[i];
-          const durMin = Math.round((seg.end - seg.start) / 60);
-          if (seg.state === 1) {
-            totalRun += seg.end - seg.start;
-            addRow(dayLabel, 'Работа', seg.start, String(durMin));
-            addRow(dayLabel, 'Остановка', seg.end, '');
-          } else {
-            totalDown += seg.end - seg.start;
-            addRow(dayLabel, 'Простой', seg.start, String(durMin));
-            if (i < merged.length - 1 && merged[i + 1].state === 1) {
-              addRow(dayLabel, 'Запуск', seg.end, '');
-            }
-          }
-        }
-      }
-      // Add a summary row for this line
-      const total = totalRun + totalDown;
-      const pct = total ? ((totalDown / total) * 100).toFixed(1) + '%' : '0.0%';
-      summary.addRow({ line: lineId, up: (totalRun / 3600).toFixed(1), down: (totalDown / 3600).toFixed(1), pct });
-    }
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    const wb = await generateReport(db, settings, fromTs, toTs);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
     res.setHeader('Content-Disposition', 'attachment; filename="report.xlsx"');
     await wb.xlsx.write(res);
     res.end();
