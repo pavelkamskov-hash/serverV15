@@ -8,6 +8,20 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chart.js for graphs -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --speed-color: #2563eb;
+      --work-color: #16a34a;
+      --idle-color: #dc2626;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --speed-color: #60a5fa;
+        --work-color: #4ade80;
+        --idle-color: #f87171;
+      }
+    }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-900 min-h-screen">
   <div id="app" class="p-4">
@@ -37,6 +51,42 @@
     let speedChart = null;
     let dailyChart = null;
 
+    function getChartColors() {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        speed: styles.getPropertyValue('--speed-color').trim(),
+        work: styles.getPropertyValue('--work-color').trim(),
+        idle: styles.getPropertyValue('--idle-color').trim(),
+      };
+    }
+
+    function hexToRgba(hex, alpha) {
+      const m = hex.match(/^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i);
+      if (!m) return hex;
+      const r = parseInt(m[1], 16);
+      const g = parseInt(m[2], 16);
+      const b = parseInt(m[3], 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function applyChartColors() {
+      const colors = getChartColors();
+      if (speedChart) {
+        speedChart.data.datasets[0].borderColor = colors.speed;
+        speedChart.data.datasets[0].backgroundColor = hexToRgba(colors.speed, 0.2);
+        speedChart.update();
+      }
+      if (dailyChart) {
+        dailyChart.data.datasets[0].backgroundColor = colors.work;
+        dailyChart.data.datasets[1].backgroundColor = colors.idle;
+        dailyChart.update();
+      }
+    }
+
+    // Create charts on first load
+    function createCharts() {
+      const ctx1 = document.getElementById('speedChart').getContext('2d');
+      const colors = getChartColors();
     // Create charts on first load
     function createCharts() {
       const ctx1 = document.getElementById('speedChart').getContext('2d');
@@ -46,6 +96,12 @@
           labels: [],
           datasets: [
             {
+              label: 'Скорость (см/мин)',
+              data: [],
+              borderColor: colors.speed,
+              backgroundColor: hexToRgba(colors.speed, 0.2),
+              pointRadius: 0,
+              fill: true,
 
               type: 'bar',
               label: 'Состояние',
@@ -79,6 +135,9 @@
               beginAtZero: true,
               title: { display: true, text: 'см/мин' },
             },
+          },
+          plugins: {
+            legend: { display: false },
 
             y1: { display: false, min: 0, max: 1 },
           },
@@ -113,11 +172,13 @@
             {
               label: 'Работа (ч)',
               data: [],
+              backgroundColor: colors.work,
               backgroundColor: '#16a34a',
             },
             {
               label: 'Простой (ч)',
               data: [],
+              backgroundColor: colors.idle,
               backgroundColor: '#dc2626',
             },
           ],
@@ -233,6 +294,7 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       createCharts();
+      applyChartColors();
       loadStatus().then(() => {
         selectLine(currentLine);
       });
@@ -241,6 +303,10 @@
         window.location.href = '/settings';
       });
     });
+
+    const themeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+    themeMedia.addEventListener('change', applyChartColors);
+    window.addEventListener('themechange', applyChartColors);
   </script>
 </body>
 </html>
