@@ -13,12 +13,11 @@
 process.env.TZ = 'Etc/GMT-4';
 const express = require('express');
 const session = require('express-session');
-const bcrypt = require('bcrypt');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 const ExcelJS = require('exceljs');
-const { username, passwordHash } = require('./config');
+const { username, password } = require('./config');
 const { Agent } = require('./smartAgent');
 const { generateReport } = require('./report');
 
@@ -198,18 +197,14 @@ app.get('/login', (req, res) => {
 app.post(
   '/login',
   express.urlencoded({ extended: true }),
-  async (req, res) => {
-    try {
-      const { username: u, password, remember } = req.body || {};
-      if (u === username && (await bcrypt.compare(String(password || ''), passwordHash))) {
-        req.session.user = username;
-        if (remember) {
-          req.session.cookie.maxAge = 30 * 86400 * 1000; // 30 days
-        }
-        return res.redirect('/');
+  (req, res) => {
+    const { username: u, password: p, remember } = req.body || {};
+    if (u === username && String(p || '') === password) {
+      req.session.user = username;
+      if (remember) {
+        req.session.cookie.maxAge = 30 * 86400 * 1000; // 30 days
       }
-    } catch (e) {
-      console.error('login error', e);
+      return res.redirect('/');
     }
     res.status(401).send('Unauthorized');
   }
