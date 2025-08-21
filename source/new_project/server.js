@@ -22,9 +22,10 @@ const { username, passwordHash } = require('./config');
 const { Agent } = require('./smartAgent');
 
 const pad = (n) => String(n).padStart(2, '0');
+const TZ_OFFSET = '+04:00';
 function formatDateTime(ts) {
   const d = new Date(ts * 1000);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())} ${TZ_OFFSET}`;
 }
 function formatDate(ts) {
   const d = new Date(ts * 1000);
