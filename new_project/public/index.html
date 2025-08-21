@@ -46,6 +46,7 @@
           labels: [],
           datasets: [
             {
+
               type: 'bar',
               label: 'Состояние',
               data: [],
@@ -56,13 +57,16 @@
               categoryPercentage: 1,
             },
             {
+
               label: 'Скорость (см/мин)',
               data: [],
               borderColor: '#2563eb',
               backgroundColor: 'rgba(37, 99, 235, 0.2)',
               pointRadius: 0,
               fill: true,
+
               yAxisID: 'y',
+
             },
           ],
         },
@@ -75,6 +79,7 @@
               beginAtZero: true,
               title: { display: true, text: 'см/мин' },
             },
+
             y1: { display: false, min: 0, max: 1 },
           },
           plugins: {
@@ -91,6 +96,11 @@
                 },
               },
             },
+
+          },
+          plugins: {
+            legend: { display: false },
+
           },
         },
       });
@@ -200,6 +210,8 @@
           speedChart.data.datasets[0].data = data.states.map(() => 1);
           speedChart.data.datasets[0].backgroundColor = colors;
         }
+
+        speedChart.data.datasets[0].data = data.speed.data;
         speedChart.update();
         // Daily chart
         dailyChart.data.labels = data.status.labels;

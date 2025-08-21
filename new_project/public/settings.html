@@ -60,6 +60,17 @@
       <h2 class="font-semibold mt-4 mb-2">Линии</h2>
       <div id="linesConfig" class="space-y-2"></div>
     </div>
+    <div class="border-t pt-4">
+      <h2 class="font-semibold mb-2">Смена пароля входа</h2>
+      <label class="block">Логин:
+        <input id="loginUsername" type="text" class="border p-2 rounded ml-2 w-64" />
+      </label>
+      <label class="block">Новый пароль:
+        <input id="loginPassword" type="password" class="border p-2 rounded ml-2 w-64" />
+      </label>
+      <button id="passBtn" class="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded mt-2">Обновить пароль</button>
+      <p id="passMsg" class="text-green-600 hidden">Пароль обновлён</p>
+    </div>
     <button id="saveBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded">Сохранить</button>
     <p id="saveMsg" class="text-green-600 hidden">Настройки сохранены</p>
   </div>
@@ -72,6 +83,10 @@
           document.getElementById('authForm').classList.add('hidden');
           document.getElementById('settingsForm').classList.remove('hidden');
           loadSettings(data);
+ 
+
+          loadCreds();
+
         } else if (res.status === 401) {
           document.getElementById('authForm').classList.remove('hidden');
           document.getElementById('settingsForm').classList.add('hidden');
@@ -144,6 +159,38 @@
         console.error('authenticate', e);
       }
     }
+
+    async function loadCreds() {
+      try {
+        const res = await fetch('/settings/creds');
+        if (res.status === 200) {
+          const data = await res.json();
+          document.getElementById('loginUsername').value = data.username || '';
+        }
+      } catch (e) {
+        console.error('loadCreds', e);
+      }
+    }
+    async function changePassword() {
+      const u = document.getElementById('loginUsername').value.trim();
+      const p = document.getElementById('loginPassword').value;
+      try {
+        const res = await fetch('/settings/creds', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p }),
+        });
+        if (res.status === 200) {
+          document.getElementById('passMsg').classList.remove('hidden');
+          document.getElementById('loginPassword').value = '';
+          setTimeout(() => {
+            document.getElementById('passMsg').classList.add('hidden');
+          }, 3000);
+        }
+      } catch (e) {
+        console.error('changePassword', e);
+      }
+    }
     async function saveSettings() {
       const cfg = {};
       cfg.windowSec = Number(document.getElementById('windowSec').value) || 60;
@@ -190,6 +237,9 @@
     }
     document.getElementById('authSubmit').addEventListener('click', authenticate);
     document.getElementById('saveBtn').addEventListener('click', saveSettings);
+
+    document.getElementById('passBtn').addEventListener('click', changePassword);
+
     checkAuth();
   </script>
 </body>
