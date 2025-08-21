@@ -172,11 +172,11 @@ app.use(
 
 /**
  * Middleware to enforce authentication for protected routes.  Requests
- * to the login page, static assets, the data ingestion endpoint and
- * health endpoints are permitted without a session.
+ * to the login page, the data ingestion endpoint and health endpoints
+ * are permitted without a session. Static assets require a session.
  */
 function requireAuth(req, res, next) {
-  const openPaths = ['/login', '/public', '/data', '/healthz', '/time'];
+  const openPaths = ['/login', '/data', '/healthz', '/time'];
   if (openPaths.some((p) => req.path === p || req.path.startsWith(p + '/'))) {
     return next();
   }
