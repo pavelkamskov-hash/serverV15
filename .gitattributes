@@ -1,4 +1,0 @@
-*.html  merge=ours
-*.js    merge=ours
-*.css   merge=ours
-*.json  merge=union
