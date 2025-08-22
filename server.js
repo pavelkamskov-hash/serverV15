@@ -446,14 +446,11 @@ app.get('/report', async (req, res) => {
         { header: 'Номенклатура', key: 'product', width: 16 },
       ];
       // Helper to add a row to the worksheet
-      function addRow(date, ev, whenTs, extra, prod) {
-        const d = new Date(whenTs * 1000);
-        const pad = (n) => String(n).padStart(2, '0');
-        const whenStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        ws.addRow({ date, ev, when: whenStr, downtime: extra, product: prod });
-      function addRow(date, ev, whenTs, extra) {
+      function addRow(date, ev, whenTs, extra, product) {
         const whenStr = formatLocal(new Date(whenTs * 1000));
-        ws.addRow({ date, ev, when: whenStr, downtime: extra });
+        const row = { date, ev, when: whenStr, downtime: extra };
+        if (product !== undefined) row.product = product;
+        ws.addRow(row);
       }
       // Determine the state at fromTs
       const initial = await new Promise((resolve) => {
