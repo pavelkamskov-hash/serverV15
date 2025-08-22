@@ -9,7 +9,7 @@ services:
     volumes:
       - data:/app/data
     environment:
-      - TZ=Europe/Amsterdam
+      - TZ=Etc/GMT-4
     restart: unless-stopped
 
 volumes:
