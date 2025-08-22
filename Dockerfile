@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy application files
 COPY . .
 
-# Install required Python packages for Excel reporting
-RUN pip install --no-cache-dir openpyxl
+# Install required Python packages for Excel reporting and authentication
+RUN pip install --no-cache-dir openpyxl bcrypt
 
 # Expose the port used by the Python server
 EXPOSE 3000
