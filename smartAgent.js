@@ -12,6 +12,11 @@
 
 const sqlite3 = require('sqlite3').verbose();
 
+function formatLocal(date) {
+  const pad = (n) => n.toString().padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 class Agent {
   /**
    * Construct a new Agent.
@@ -281,7 +286,7 @@ class Agent {
         const labels = [];
         const data = [];
         for (let t = fromMinute; t <= toMinute; t += 60) {
-          labels.push(new Date(t * 1000).toISOString());
+          labels.push(formatLocal(new Date(t * 1000)));
           if (map.hasOwnProperty(t)) data.push(map[t]);
           else data.push(null);
         }
@@ -374,7 +379,7 @@ class Agent {
                 if (seg.state === 1) runSec += duration;
                 else downSec += duration;
               }
-              labels.push(new Date(dayStart * 1000).toISOString().slice(0, 10));
+              labels.push(formatLocal(new Date(dayStart * 1000)).slice(0, 10));
               work.push(parseFloat((runSec / 3600).toFixed(1)));
               down.push(parseFloat((downSec / 3600).toFixed(1)));
             }

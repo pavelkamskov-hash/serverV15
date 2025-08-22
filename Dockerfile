@@ -1,5 +1,8 @@
 FROM python:3.9-slim
 
+# Set timezone
+ENV TZ=Etc/GMT-4
+
 # Set working directory
 WORKDIR /app
 
