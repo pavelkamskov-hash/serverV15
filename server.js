@@ -40,14 +40,17 @@ const SETTINGS_PATH = path.join(__dirname, 'config.json');
 function loadSettings() {
   try {
     const raw = fs.readFileSync(SETTINGS_PATH, 'utf8');
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    // Ensure a settings password is always present; fall back to the
+    // original default if the field is missing.
+    return Object.assign({ settingsPassword: '19910509' }, parsed);
   } catch (err) {
     // Fall back to the committed defaults.  Using require ensures the
     // default file is read relative to this module and cached for the
     // lifetime of the process.
     // eslint-disable-next-line import/no-dynamic-require
     const defaults = require('./config.json');
-    return Object.assign({}, defaults);
+    return Object.assign({ settingsPassword: '19910509' }, defaults);
   }
 }
 
@@ -598,11 +601,9 @@ app.get('/settings', (req, res) => {
 app.post('/settings/auth', (req, res) => {
   try {
     const { password } = req.body || {};
-    // Hard‑coded password for accessing settings.  If needed, this
-    // could be externalised into the config.  The user must change
-    // this value in the specification if they want a different
-    // password for settings.
-    const settingsPassword = '19910509';
+    // The password is stored in the runtime settings allowing
+    // operators to rotate it via config.json without modifying code.
+    const settingsPassword = settings.settingsPassword || '19910509';
     if (String(password) === settingsPassword) {
       req.session.settingsAuth = true;
       return res.json({ ok: true });
