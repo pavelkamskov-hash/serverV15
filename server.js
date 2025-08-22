@@ -195,8 +195,7 @@ app.post(
 );
 
 // Apply authentication middleware
-// Authentication disabled
-// app.use(requireAuth);
+app.use(requireAuth);
 
 // -----------------------------------------------------------------------------
 // Static files
