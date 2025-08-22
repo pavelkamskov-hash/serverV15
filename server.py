@@ -18,6 +18,8 @@ import time
 import uuid
 import urllib.parse
 import urllib.request
+import re
+import bcrypt
 from http import cookies
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler
@@ -34,6 +36,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 PUBLIC_DIR = os.path.join(BASE_DIR, 'public')
 SETTINGS_PATH = os.path.join(BASE_DIR, 'config.json')
+CREDENTIALS_PATH = os.path.join(BASE_DIR, 'config.js')
 
 # -----------------------------------------------------------------------------
 # Settings management
@@ -56,6 +59,27 @@ def save_settings(cfg):
 
 
 settings = load_settings()
+
+
+def load_credentials():
+    """Extract username and bcrypt hash from config.js."""
+    username = ''
+    pw_hash = ''
+    try:
+        with open(CREDENTIALS_PATH, 'r', encoding='utf-8') as f:
+            content = f.read()
+        m_user = re.search(r"username:\s*['\"]([^'\"]+)['\"]", content)
+        if m_user:
+            username = m_user.group(1)
+        m_hash = re.search(r"passwordHash:\s*['\"]([^'\"]+)['\"]", content)
+        if m_hash:
+            pw_hash = m_hash.group(1)
+    except Exception:
+        pass
+    return username, pw_hash
+
+
+USERNAME, PASSWORD_HASH = load_credentials()
 
 # -----------------------------------------------------------------------------
 # Database initialisation
@@ -438,7 +462,7 @@ class Handler(BaseHTTPRequestHandler):
             # Redirect internally to report_clean
             return self.handle_report_clean()
         # Authentication disabled: treat all requests as authenticated
-        sid, sess = None, {'user': settings.get('loginUsername'), 'settingsAuth': True}
+        sid, sess = None, {'user': USERNAME, 'settingsAuth': True}
         # Authenticated from here on
         if path == '/':
             return self.serve_static('index.html')
@@ -479,7 +503,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/login':
             return self.handle_login(data)
         # Authentication disabled for POST: allow all
-        sid, sess = None, {'user': settings.get('loginUsername'), 'settingsAuth': True}
+        sid, sess = None, {'user': USERNAME, 'settingsAuth': True}
         # continue
         if path == '/data':
             return self.handle_data(data)
@@ -548,8 +572,9 @@ class Handler(BaseHTTPRequestHandler):
     def handle_login(self, data):
         username_in = str(data.get('username', ''))
         password_in = str(data.get('password', ''))
-        if (username_in == settings.get('loginUsername') and password_in == settings.get('loginPassword')):
-            # create session
+        if username_in == USERNAME and bcrypt.checkpw(
+            password_in.encode('utf-8'), PASSWORD_HASH.encode('utf-8')
+        ):
             sid = generate_sid()
             with SESSION_LOCK:
                 SESSIONS[sid] = {'user': username_in, 'settingsAuth': False}
@@ -675,8 +700,6 @@ class Handler(BaseHTTPRequestHandler):
         if 'telegramChatId' in data:
             new_cfg['telegramChatId'] = str(data.get('telegramChatId') or settings.get('telegramChatId', ''))
         # Preserve credentials and settings password
-        new_cfg['loginUsername'] = settings.get('loginUsername')
-        new_cfg['loginPassword'] = settings.get('loginPassword')
         new_cfg['settingsPassword'] = settings.get('settingsPassword')
         # Apply and persist
         settings = new_cfg
