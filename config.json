@@ -1,27 +1,11 @@
 {
-  // Number of seconds to use for smoothing the speed.  Incoming pulse
-  // packets are accumulated over this window and converted into a
-  // moving average speed (cm/min).
   "windowSec": 60,
-  // Speed thresholds (cm/min) used to detect starts and stops.  When the
-  // smoothed speed rises above V_START for delayStart seconds the line
-  // transitions to RUN.  When the smoothed speed falls below V_STOP for
-  // delayStop seconds it transitions to STOP.
   "V_START": 0.5,
   "V_STOP": 0.3,
-  // Time (seconds) that the speed must remain above or below the
-  // threshold before a state change is logged.
   "delayStart": 30,
   "delayStop": 30,
-  // Depth of the speed chart in hours.  Supported values are 24 or 48.
   "graphHours": 24,
-  // Maximum interval (seconds) between packets before the line is marked
-  // as stopped.  If no packets arrive for longer than this period the
-  // agent resets the smoothing buffer and forces the state to STOP.
   "offlineTimeout": 60,
-  // Names of the lines shown in the UI.  Operators can customise these
-  // names via the settings page.  If a name is left empty the default
-  // identifier (line1, line2, ...) is used.
   "lineNames": {
     "line1": "Линия 1",
     "line2": "Линия 2",
@@ -37,10 +21,6 @@
     "line12": "Линия 12",
     "line13": "Линия 13"
   },
-  // By default all thirteen lines are enabled.  If a line is disabled
-  // (removed from this array) it will still appear in the UI but no
-  // smoothing or state detection will be performed until it receives
-  // packets.
   "enabledLines": [
     "line1",
     "line2",
@@ -55,21 +35,8 @@
     "line11",
     "line12",
     "line13"
-  ]
-  ,
-  // Login credentials for the dashboard.  The username and password
-  // protect access to the UI.  The password is stored in plain
-  // text here for simplicity; change it to a strong secret before
-  // deploying.
-  "loginUsername": "zavod",
-  "loginPassword": "H0lzH0f2025",
-  // Password required to access the settings page.  The same value
-  // appears in server code as a fallback.  You can change it here
-  // without touching the code.
+  ],
   "settingsPassword": "19910509",
-  // Product (номенклатура) assigned to each line.  Operators can
-  // change these values via the settings page.  The current product
-  // is stored with each state change event and included in reports.
   "products": {
     "line1": "",
     "line2": "",
@@ -85,9 +52,6 @@
     "line12": "",
     "line13": ""
   },
-  // Telegram integration.  When both token and chatId are provided
-  // the agent will send messages to this chat when a line starts or
-  // stops.  Leave empty to disable notifications.
   "telegramToken": "",
   "telegramChatId": ""
 }

@@ -17,6 +17,9 @@ function fmt(ts) {
   const d = new Date(ts * 1000);
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+function formatLocal(date) {
+  const pad = (n) => n.toString().padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 class Agent {
@@ -289,6 +292,7 @@ class Agent {
         const data = [];
         for (let t = fromMinute; t <= toMinute; t += 60) {
           labels.push(fmt(t));
+          labels.push(formatLocal(new Date(t * 1000)));
           if (map.hasOwnProperty(t)) data.push(map[t]);
           else data.push(null);
         }
@@ -381,7 +385,7 @@ class Agent {
                 if (seg.state === 1) runSec += duration;
                 else downSec += duration;
               }
-              labels.push(new Date(dayStart * 1000).toISOString().slice(0, 10));
+              labels.push(formatLocal(new Date(dayStart * 1000)).slice(0, 10));
               work.push(parseFloat((runSec / 3600).toFixed(1)));
               down.push(parseFloat((downSec / 3600).toFixed(1)));
             }
