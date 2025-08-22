@@ -293,7 +293,6 @@ class Agent {
         const labels = [];
         const data = [];
         for (let t = fromMinute; t <= toMinute; t += 60) {
-          labels.push(fmt(t));
           labels.push(formatLocal(new Date(t * 1000)));
           if (map.hasOwnProperty(t)) data.push(map[t]);
           else data.push(null);
