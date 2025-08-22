@@ -1,0 +1,21 @@
+{
+  "users": {
+    "viewer": {
+      "passwordHash": "$2b$12$v6Afhzj5VUp7/k3yC469VeWcbfD2ro3y9R9v9bfniTvh1nsuucYOu",
+      "role": "viewer"
+    },
+    "operator": {
+      "passwordHash": "$2b$12$v6Afhzj5VUp7/k3yC469VeWcbfD2ro3y9R9v9bfniTvh1nsuucYOu",
+      "role": "operator"
+    },
+    "manager": {
+      "passwordHash": "$2b$12$v6Afhzj5VUp7/k3yC469VeWcbfD2ro3y9R9v9bfniTvh1nsuucYOu",
+      "role": "manager"
+    },
+    "admin": {
+      "passwordHash": "$2b$12$v6Afhzj5VUp7/k3yC469VeWcbfD2ro3y9R9v9bfniTvh1nsuucYOu",
+      "role": "admin"
+    }
+  },
+  "settingsPassword": "19910509"
+}
