@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  monitor:
+    build: .
+    container_name: extrusion_monitor
+    ports:
+      - "3000:3000"
+    volumes:
+      - data:/app/data
+    environment:
+      - TZ=Etc/GMT-4
+    restart: unless-stopped
+
+volumes:
+  data:
