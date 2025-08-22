@@ -160,7 +160,11 @@ app.use(
  * to the login page, static assets, the data ingestion endpoint and
  * health endpoints are permitted without a session.
  */
-function requireAuth(req, res, next) { return next(); }
+function requireAuth(req, res, next) {
+  const openPaths = ['/login', '/data', '/healthz'];
+  if (openPaths.includes(req.path) || req.path.startsWith('/public')) {
+    return next();
+  }
   if (req.session && req.session.user === username) {
     return next();
   }
@@ -170,7 +174,9 @@ function requireAuth(req, res, next) { return next(); }
 // -----------------------------------------------------------------------------
 // Authentication routes
 
-app.get('/login', (req, res) => { res.redirect('/'); });
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
 
 app.post(
   '/login',
@@ -193,8 +199,7 @@ app.post(
 );
 
 // Apply authentication middleware
-// Authentication disabled
-// app.use(requireAuth);
+app.use(requireAuth);
 
 // -----------------------------------------------------------------------------
 // Static files
