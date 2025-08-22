@@ -365,6 +365,9 @@ app.get('/status', (req, res) => {
 app.get('/chartdata/:lineId', (req, res) => {
   const lineId = String(req.params.lineId || '').trim();
   const hours = Number(settings.graphHours) || 24;
+  const now = Math.floor(Date.now() / 1000);
+  const toMinute = Math.floor(now / 60) * 60;
+  const fromMinute = toMinute - hours * 3600;
   agent.getSeries(lineId, hours, (err1, series) => {
     if (err1 || !series) {
       console.error('getSeries', err1);
@@ -375,18 +378,25 @@ app.get('/chartdata/:lineId', (req, res) => {
         console.error('getDailyWorkIdle', err2);
         return res.status(500).json({ error: 'daily' });
       }
-      const lineName = (settings.lineNames && settings.lineNames[lineId]) || lineId;
-      const speed = {
-        labels: series.labels,
-        data: series.data,
-      };
-      const status = {
-        labels: daily.labels,
-        work: daily.work,
-        down: daily.down,
-        lineName,
-      };
-      res.json({ speed, status });
+      agent.getEvents(lineId, fromMinute, toMinute, (err3, events) => {
+        if (err3 || !events) {
+          console.error('getEvents', err3);
+          return res.status(500).json({ error: 'events' });
+        }
+        const lineName = (settings.lineNames && settings.lineNames[lineId]) || lineId;
+        const speed = {
+          labels: series.labels,
+          data: series.data,
+        };
+        const status = {
+          labels: daily.labels,
+          work: daily.work,
+          down: daily.down,
+          lineName,
+          events,
+        };
+        res.json({ speed, status });
+      });
     });
   });
 });
