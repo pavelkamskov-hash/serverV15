@@ -161,10 +161,6 @@ app.use(
  * health endpoints are permitted without a session.
  */
 function requireAuth(req, res, next) {
-  const openPaths = ['/login', '/data', '/healthz'];
-  if (openPaths.includes(req.path) || req.path.startsWith('/public')) {
-    return next();
-  }
   if (req.session && req.session.user === username) {
     return next();
   }
