@@ -21,21 +21,6 @@
     "line12": "Линия 12",
     "line13": "Линия 13"
   },
-  "enabledLines": [
-    "line1",
-    "line2",
-    "line3",
-    "line4",
-    "line5",
-    "line6",
-    "line7",
-    "line8",
-    "line9",
-    "line10",
-    "line11",
-    "line12",
-    "line13"
-  ],
   "settingsPassword": "19910509",
   "products": {
     "line1": "",

@@ -676,11 +676,6 @@ app.post('/settings/save', (req, res) => {
     newCfg.delayStop = num(body.delayStop, settings.delayStop);
     newCfg.graphHours = num(body.graphHours, settings.graphHours);
     newCfg.offlineTimeout = num(body.offlineTimeout, settings.offlineTimeout);
-    // Enabled lines should be an array of strings; if omitted use
-    // existing enabledLines.
-    if (Array.isArray(body.enabledLines)) {
-      newCfg.enabledLines = body.enabledLines.map((x) => String(x));
-    }
     // lineNames is expected to be an object mapping lineId to string
     if (body.lineNames && typeof body.lineNames === 'object') {
       const names = {};
