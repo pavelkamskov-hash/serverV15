@@ -12,13 +12,6 @@
 
 const sqlite3 = require('sqlite3').verbose();
 
-// Format a UNIX timestamp (seconds) as 'YYYY-MM-DD HH:mm'.
-function fmt(ts) {
-  const d = new Date(ts * 1000);
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 function formatLocal(date) {
   const pad = (n) => n.toString().padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -454,8 +447,8 @@ class Agent {
               start: seg.start,
               end: seg.end,
               state: seg.state,
-              startStr: fmt(seg.start),
-              endStr: fmt(seg.end),
+              startStr: formatLocal(new Date(seg.start * 1000)).slice(11),
+              endStr: formatLocal(new Date(seg.end * 1000)).slice(11),
               durMin: parseFloat(((seg.end - seg.start) / 60).toFixed(1)),
             }));
             cb(null, events);

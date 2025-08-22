@@ -27,6 +27,7 @@
         <h2 class="text-lg font-bold mt-6 mb-2">Работа / Простой (30 дней)</h2>
         <div class="bg-white p-4 rounded shadow">
           <canvas id="dailyChart"></canvas>
+          <button id="reportBtn" class="mt-4 px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded">Скачать отчёт за 30 дней</button>
         </div>
       </div>
     </div>
@@ -36,6 +37,7 @@
     let currentLine = null;
     let speedChart = null;
     let dailyChart = null;
+    let dailyEvents = {};
 
     // Create charts on first load
     function createCharts() {
@@ -59,7 +61,12 @@
           responsive: true,
           maintainAspectRatio: false,
           scales: {
-            x: { display: false },
+            x: {
+              display: true,
+              ticks: {
+                callback: (val, idx) => speedChart.data.labels[idx]?.slice(11) || '',
+              },
+            },
             y: {
               beginAtZero: true,
               title: { display: true, text: 'см/мин' },
@@ -102,6 +109,30 @@
               stacked: true,
               beginAtZero: true,
               title: { display: true, text: 'Часы' },
+            },
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${ctx.formattedValue}`,
+                afterBody: (items) => {
+                  const day = items[0].label;
+                  const evs = dailyEvents[day] || [];
+                  const lines = [];
+                  evs.forEach((ev) => {
+                    const h = Math.floor(ev.durMin / 60);
+                    const m = Math.round(ev.durMin % 60);
+                    if (ev.state === 0) {
+                      lines.push(`Остановка: ${ev.startStr}`);
+                      lines.push(`Простой: ${h ? h + ' ч ' : ''}${m} мин`);
+                    } else {
+                      lines.push(`Запуск: ${ev.startStr}`);
+                      lines.push(`Работа: ${h ? h + ' ч ' : ''}${m} мин`);
+                    }
+                  });
+                  return lines;
+                },
+              },
             },
           },
         },
@@ -181,6 +212,7 @@
         dailyChart.data.labels = data.status.labels;
         dailyChart.data.datasets[0].data = data.status.work;
         dailyChart.data.datasets[1].data = data.status.down;
+        dailyEvents = data.status.events || {};
         dailyChart.update();
         document.getElementById('lineTitle').textContent = `${data.status.lineName || currentLine} — скорость`;
       } catch (e) {
@@ -203,6 +235,9 @@
       periodic();
       document.getElementById('settingsBtn').addEventListener('click', () => {
         window.location.href = '/settings';
+      });
+      document.getElementById('reportBtn').addEventListener('click', () => {
+        window.location.href = '/report';
       });
     });
   </script>
