@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Монитор линий</title>
+  <!-- Tailwind for quick styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for graphs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 min-h-screen">
+  <div id="app" class="p-4">
+    <div class="flex flex-col md:flex-row gap-4">
+      <!-- Left column: list of lines and settings button -->
+      <div class="w-full md:w-1/4">
+        <h2 class="text-lg font-bold mb-2">Линии</h2>
+        <div id="linesList" class="flex flex-col gap-2"></div>
+        <button id="settingsBtn" class="mt-4 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">Настройки</button>
+      </div>
+      <!-- Right column: charts -->
+      <div class="flex-1">
+        <h2 id="lineTitle" class="text-lg font-bold mb-2">Скорость</h2>
+        <div class="bg-white p-4 rounded shadow">
+          <canvas id="speedChart"></canvas>
+        </div>
+        <h2 class="text-lg font-bold mt-6 mb-2">Работа / Простой (30 дней)</h2>
+        <div class="bg-white p-4 rounded shadow">
+          <canvas id="dailyChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentLine = null;
+    let speedChart = null;
+    let dailyChart = null;
+
+    // Create charts on first load
+    function createCharts() {
+      const ctx1 = document.getElementById('speedChart').getContext('2d');
+      speedChart = new Chart(ctx1, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Скорость (см/мин)',
+              data: [],
+              borderColor: '#2563eb',
+              backgroundColor: 'rgba(37, 99, 235, 0.2)',
+              pointRadius: 0,
+              fill: true,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { display: false },
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: 'см/мин' },
+            },
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => items[0].label,
+              },
+            },
+          },
+        },
+      });
+      const ctx2 = document.getElementById('dailyChart').getContext('2d');
+      dailyChart = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Работа (ч)',
+              data: [],
+              backgroundColor: '#16a34a',
+            },
+            {
+              label: 'Простой (ч)',
+              data: [],
+              backgroundColor: '#dc2626',
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { stacked: true },
+            y: {
+              stacked: true,
+              beginAtZero: true,
+              title: { display: true, text: 'Часы' },
+            },
+          },
+        },
+      });
+    }
+
+    // Load the current status for all lines and populate the list
+    async function loadStatus() {
+      try {
+        const res = await fetch('/status');
+        const lines = await res.json();
+        const container = document.getElementById('linesList');
+        container.innerHTML = '';
+        lines.forEach((item) => {
+          const div = document.createElement('div');
+          div.className = 'p-2 bg-white rounded shadow flex justify-between items-center cursor-pointer';
+          div.dataset.lineId = item.lineId;
+          const name = item.displayName || item.lineId;
+          const stateLabel = item.stateLabel;
+          const speed = (item.speed && !isNaN(item.speed)) ? item.speed.toFixed(1) : '-';
+          const product = item.product || '';
+          div.innerHTML = `
+            <div>
+              <div class="font-semibold">${name}</div>
+              <div class="text-sm text-gray-500">${stateLabel}</div>
+              <div class="text-xs text-gray-400">Изделие: ${product || '-'}</div>
+            </div>
+            <div class="text-right">
+              <div class="font-mono">${speed}</div>
+            </div>
+          `;
+          div.addEventListener('click', () => {
+            selectLine(item.lineId);
+          });
+          if (currentLine === null) {
+            currentLine = item.lineId;
+          }
+          container.appendChild(div);
+        });
+        // Highlight the selected line
+        Array.from(container.children).forEach((child) => {
+          child.classList.remove('border', 'border-blue-500');
+          if (child.dataset.lineId === currentLine) {
+            child.classList.add('border', 'border-blue-500');
+          }
+        });
+      } catch (e) {
+        console.error('loadStatus', e);
+      }
+    }
+
+    // Change the selected line and refresh charts
+    async function selectLine(lineId) {
+      currentLine = lineId;
+      await updateCharts();
+      // update highlight
+      const container = document.getElementById('linesList');
+      Array.from(container.children).forEach((child) => {
+        child.classList.remove('border', 'border-blue-500');
+        if (child.dataset.lineId === lineId) {
+          child.classList.add('border', 'border-blue-500');
+        }
+      });
+    }
+
+    // Fetch chart data for the current line and update both charts
+    async function updateCharts() {
+      if (!currentLine) return;
+      try {
+        const res = await fetch('/chartdata/' + currentLine);
+        const data = await res.json();
+        // Speed chart: labels are already formatted as YYYY-MM-DD HH:mm
+        speedChart.data.labels = data.speed.labels;
+        speedChart.data.datasets[0].data = data.speed.data;
+        speedChart.update();
+        // Daily chart
+        dailyChart.data.labels = data.status.labels;
+        dailyChart.data.datasets[0].data = data.status.work;
+        dailyChart.data.datasets[1].data = data.status.down;
+        dailyChart.update();
+        document.getElementById('lineTitle').textContent = `${data.status.lineName || currentLine} — скорость`;
+      } catch (e) {
+        console.error('updateCharts', e);
+      }
+    }
+
+    // Periodically refresh status and charts
+    async function periodic() {
+      await loadStatus();
+      await updateCharts();
+      setTimeout(periodic, 15000);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      createCharts();
+      loadStatus().then(() => {
+        selectLine(currentLine);
+      });
+      periodic();
+      document.getElementById('settingsBtn').addEventListener('click', () => {
+        window.location.href = '/settings';
+      });
+    });
+  </script>
+</body>
+</html>
