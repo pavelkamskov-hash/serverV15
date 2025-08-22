@@ -341,6 +341,7 @@ app.get('/status', (req, res) => {
         stateLabel = isRunning ? 'Работает' : 'Остановлена';
       }
       const displayName = (settings.lineNames && settings.lineNames[id]) || id;
+      const product = (settings.products && settings.products[id]) || '';
       result.push({
         lineId: id,
         displayName,
@@ -349,6 +350,7 @@ app.get('/status', (req, res) => {
         lastPulseTime: row.lastPulseTime,
         lastPacketTime: row.lastPacketTime,
         stateLabel,
+        product,
       });
     }
     res.json(result);
@@ -368,6 +370,7 @@ app.get('/chartdata/:lineId', (req, res) => {
   const now = Math.floor(Date.now() / 1000);
   const toMinute = Math.floor(now / 60) * 60;
   const fromMinute = toMinute - hours * 3600;
+  const fromDay = toMinute - 30 * 86400;
   agent.getSeries(lineId, hours, (err1, series) => {
     if (err1 || !series) {
       console.error('getSeries', err1);
@@ -378,12 +381,18 @@ app.get('/chartdata/:lineId', (req, res) => {
         console.error('getDailyWorkIdle', err2);
         return res.status(500).json({ error: 'daily' });
       }
-      agent.getEvents(lineId, fromMinute, toMinute, (err3, events) => {
+      agent.getEvents(lineId, fromDay, toMinute, (err3, events) => {
         if (err3 || !events) {
           console.error('getEvents', err3);
           return res.status(500).json({ error: 'events' });
         }
         const lineName = (settings.lineNames && settings.lineNames[lineId]) || lineId;
+        const eventsByDay = {};
+        events.forEach((ev) => {
+          const day = formatLocal(new Date(ev.start * 1000)).slice(0, 10);
+          if (!eventsByDay[day]) eventsByDay[day] = [];
+          eventsByDay[day].push(ev);
+        });
         const speed = {
           labels: series.labels,
           data: series.data,
@@ -393,7 +402,7 @@ app.get('/chartdata/:lineId', (req, res) => {
           work: daily.work,
           down: daily.down,
           lineName,
-          events,
+          events: eventsByDay,
         };
         res.json({ speed, status });
       });
