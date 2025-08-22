@@ -12,6 +12,16 @@
 
 const sqlite3 = require('sqlite3').verbose();
 
+// Format a UNIX timestamp (seconds) as 'YYYY-MM-DD HH:mm'.
+function fmt(ts) {
+  const d = new Date(ts * 1000);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+function formatLocal(date) {
+  const pad = (n) => n.toString().padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 class Agent {
   /**
    * Construct a new Agent.
@@ -281,7 +291,8 @@ class Agent {
         const labels = [];
         const data = [];
         for (let t = fromMinute; t <= toMinute; t += 60) {
-          labels.push(new Date(t * 1000).toISOString());
+          labels.push(fmt(t));
+          labels.push(formatLocal(new Date(t * 1000)));
           if (map.hasOwnProperty(t)) data.push(map[t]);
           else data.push(null);
         }
@@ -374,11 +385,79 @@ class Agent {
                 if (seg.state === 1) runSec += duration;
                 else downSec += duration;
               }
-              labels.push(new Date(dayStart * 1000).toISOString().slice(0, 10));
+              labels.push(formatLocal(new Date(dayStart * 1000)).slice(0, 10));
               work.push(parseFloat((runSec / 3600).toFixed(1)));
               down.push(parseFloat((downSec / 3600).toFixed(1)));
             }
             cb(null, { labels, work, down });
+          }
+        );
+      }
+    );
+  }
+
+  /**
+   * Retrieve merged RUN/STOP segments within a time window.  Short
+   * segments (<60s) are folded into the surrounding state to eliminate
+   * spurious toggles.
+   *
+   * @param {String} lineId Identifier of the line.
+   * @param {Number} from   Start timestamp in seconds (inclusive).
+   * @param {Number} to     End timestamp in seconds (inclusive).
+   * @param {Function} cb   Callback (err, events).
+   */
+  getEvents(lineId, from, to, cb) {
+    this.db.all(
+      `SELECT timestamp, isRunning FROM status_log WHERE lineId=? AND timestamp>=? AND timestamp<=? ORDER BY timestamp ASC`,
+      [lineId, from, to],
+      (err, rows) => {
+        if (err) return cb(err);
+        this.db.get(
+          `SELECT isRunning FROM status_log WHERE lineId=? AND timestamp<? ORDER BY timestamp DESC LIMIT 1`,
+          [lineId, from],
+          (err2, lastRow) => {
+            if (err2) return cb(err2);
+            let state = lastRow ? Number(lastRow.isRunning) : 0;
+            let start = from;
+            const segments = [];
+            for (const r of rows) {
+              const s = Number(r.isRunning);
+              if (s !== state) {
+                segments.push({ start, end: r.timestamp, state });
+                state = s;
+                start = r.timestamp;
+              }
+            }
+            segments.push({ start, end: to, state });
+            // Merge short segments (<60s)
+            const merged = [];
+            for (const seg of segments) {
+              const dur = seg.end - seg.start;
+              if (seg.state === 1 && dur < 60) {
+                if (merged.length && merged[merged.length - 1].state === 0) {
+                  merged[merged.length - 1].end = seg.end;
+                } else {
+                  merged.push({ start: seg.start, end: seg.end, state: 0 });
+                }
+              } else if (seg.state === 0 && dur < 60) {
+                if (merged.length && merged[merged.length - 1].state === 1) {
+                  merged[merged.length - 1].end = seg.end;
+                } else {
+                  merged.push({ start: seg.start, end: seg.end, state: 1 });
+                }
+              } else {
+                merged.push({ ...seg });
+              }
+            }
+            const events = merged.map((seg) => ({
+              start: seg.start,
+              end: seg.end,
+              state: seg.state,
+              startStr: fmt(seg.start),
+              endStr: fmt(seg.end),
+              durMin: parseFloat(((seg.end - seg.start) / 60).toFixed(1)),
+            }));
+            cb(null, events);
           }
         );
       }

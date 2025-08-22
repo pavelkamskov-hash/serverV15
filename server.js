@@ -10,6 +10,8 @@
  * access the settings page.
  */
 
+process.env.TZ = 'Etc/GMT-4';
+
 const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
@@ -31,6 +33,11 @@ const { Agent } = require('./smartAgent');
 
 const SETTINGS_PATH = path.join(__dirname, 'config.json');
 
+function formatLocal(date) {
+  const pad = (n) => n.toString().padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 /**
  * Load settings from disk.  If the settings file does not exist the
  * committed defaults are returned.
@@ -40,14 +47,17 @@ const SETTINGS_PATH = path.join(__dirname, 'config.json');
 function loadSettings() {
   try {
     const raw = fs.readFileSync(SETTINGS_PATH, 'utf8');
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    // Ensure a settings password is always present; fall back to the
+    // original default if the field is missing.
+    return Object.assign({ settingsPassword: '19910509' }, parsed);
   } catch (err) {
     // Fall back to the committed defaults.  Using require ensures the
     // default file is read relative to this module and cached for the
     // lifetime of the process.
     // eslint-disable-next-line import/no-dynamic-require
     const defaults = require('./config.json');
-    return Object.assign({}, defaults);
+    return Object.assign({ settingsPassword: '19910509' }, defaults);
   }
 }
 
@@ -160,7 +170,7 @@ app.use(
  * to the login page, static assets, the data ingestion endpoint and
  * health endpoints are permitted without a session.
  */
-function requireAuth(req, res, next) { return next(); }
+function requireAuth(req, res, next) {
   if (req.session && req.session.user === username) {
     return next();
   }
@@ -170,7 +180,9 @@ function requireAuth(req, res, next) { return next(); }
 // -----------------------------------------------------------------------------
 // Authentication routes
 
-app.get('/login', (req, res) => { res.redirect('/'); });
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
 
 app.post(
   '/login',
@@ -193,8 +205,7 @@ app.post(
 );
 
 // Apply authentication middleware
-// Authentication disabled
-// app.use(requireAuth);
+app.use(requireAuth);
 
 // -----------------------------------------------------------------------------
 // Static files
@@ -354,6 +365,9 @@ app.get('/status', (req, res) => {
 app.get('/chartdata/:lineId', (req, res) => {
   const lineId = String(req.params.lineId || '').trim();
   const hours = Number(settings.graphHours) || 24;
+  const now = Math.floor(Date.now() / 1000);
+  const toMinute = Math.floor(now / 60) * 60;
+  const fromMinute = toMinute - hours * 3600;
   agent.getSeries(lineId, hours, (err1, series) => {
     if (err1 || !series) {
       console.error('getSeries', err1);
@@ -364,18 +378,25 @@ app.get('/chartdata/:lineId', (req, res) => {
         console.error('getDailyWorkIdle', err2);
         return res.status(500).json({ error: 'daily' });
       }
-      const lineName = (settings.lineNames && settings.lineNames[lineId]) || lineId;
-      const speed = {
-        labels: series.labels,
-        data: series.data,
-      };
-      const status = {
-        labels: daily.labels,
-        work: daily.work,
-        down: daily.down,
-        lineName,
-      };
-      res.json({ speed, status });
+      agent.getEvents(lineId, fromMinute, toMinute, (err3, events) => {
+        if (err3 || !events) {
+          console.error('getEvents', err3);
+          return res.status(500).json({ error: 'events' });
+        }
+        const lineName = (settings.lineNames && settings.lineNames[lineId]) || lineId;
+        const speed = {
+          labels: series.labels,
+          data: series.data,
+        };
+        const status = {
+          labels: daily.labels,
+          work: daily.work,
+          down: daily.down,
+          lineName,
+          events,
+        };
+        res.json({ speed, status });
+      });
     });
   });
 });
@@ -430,6 +451,9 @@ app.get('/report', async (req, res) => {
         const pad = (n) => String(n).padStart(2, '0');
         const whenStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
         ws.addRow({ date, ev, when: whenStr, downtime: extra, product: prod });
+      function addRow(date, ev, whenTs, extra) {
+        const whenStr = formatLocal(new Date(whenTs * 1000));
+        ws.addRow({ date, ev, when: whenStr, downtime: extra });
       }
       // Determine the state at fromTs
       const initial = await new Promise((resolve) => {
@@ -458,7 +482,7 @@ app.get('/report', async (req, res) => {
       let prevState = initial;
       for (let dayStart = Math.floor(fromTs / 86400) * 86400; dayStart < toTs; dayStart += 86400) {
         const dayEnd = Math.min(dayStart + 86400, toTs);
-        const dayLabel = new Date(dayStart * 1000).toISOString().slice(0, 10);
+        const dayLabel = formatLocal(new Date(dayStart * 1000)).slice(0, 10);
         // Build raw segments for this day
         const dayEvents = logs.filter((ev) => ev.timestamp >= dayStart && ev.timestamp < dayEnd);
         let state = prevState;
@@ -606,11 +630,9 @@ app.get('/settings', (req, res) => {
 app.post('/settings/auth', (req, res) => {
   try {
     const { password } = req.body || {};
-    // Hard‑coded password for accessing settings.  If needed, this
-    // could be externalised into the config.  The user must change
-    // this value in the specification if they want a different
-    // password for settings.
-    const settingsPassword = '19910509';
+    // The password is stored in the runtime settings allowing
+    // operators to rotate it via config.json without modifying code.
+    const settingsPassword = settings.settingsPassword || '19910509';
     if (String(password) === settingsPassword) {
       req.session.settingsAuth = true;
       return res.json({ ok: true });
