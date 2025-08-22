@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <h1>Settings</h1>
+  <div id="auth-section">
+    <p>Enter settings password:</p>
+    <input type="password" id="settings-password" />
+    <button id="auth-button">Unlock</button>
+    <p id="auth-status"></p>
+  </div>
+  <script>
+    const btn = document.getElementById('auth-button');
+    btn.addEventListener('click', async () => {
+      const password = document.getElementById('settings-password').value;
+      try {
+        const res = await fetch('/settings/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+        const data = await res.json();
+        document.getElementById('auth-status').textContent = data && data.ok ? 'Authenticated' : 'Access denied';
+      } catch (err) {
+        document.getElementById('auth-status').textContent = 'Error contacting server';
+      }
+    });
+  </script>
+</body>
+</html>
