@@ -428,12 +428,14 @@ app.get('/report', async (req, res) => {
     const summary = wb.addWorksheet('Сводка 30 дней');
     summary.columns = [
       { header: 'Линия', key: 'line', width: 12 },
+      { header: 'Номенклатура', key: 'product', width: 16 },
       { header: 'Работа, ч', key: 'up', width: 14 },
       { header: 'Простой, ч', key: 'down', width: 14 },
       { header: '% простоя', key: 'pct', width: 12 },
     ];
     const lines = Array.from({ length: 13 }, (_, i) => `line${i + 1}`);
     for (const lineId of lines) {
+      const product = (settings.products && settings.products[lineId]) || '';
       // Build a per‑line worksheet
       const ws = wb.addWorksheet(lineId);
       ws.columns = [
@@ -441,8 +443,14 @@ app.get('/report', async (req, res) => {
         { header: 'Событие', key: 'ev', width: 18 },
         { header: 'Время', key: 'when', width: 20 },
         { header: 'Простой, мин', key: 'downtime', width: 14 },
+        { header: 'Номенклатура', key: 'product', width: 16 },
       ];
       // Helper to add a row to the worksheet
+      function addRow(date, ev, whenTs, extra, prod) {
+        const d = new Date(whenTs * 1000);
+        const pad = (n) => String(n).padStart(2, '0');
+        const whenStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        ws.addRow({ date, ev, when: whenStr, downtime: extra, product: prod });
       function addRow(date, ev, whenTs, extra) {
         const whenStr = formatLocal(new Date(whenTs * 1000));
         ws.addRow({ date, ev, when: whenStr, downtime: extra });
@@ -517,13 +525,13 @@ app.get('/report', async (req, res) => {
           const durMin = Math.round((seg.end - seg.start) / 60);
           if (seg.state === 1) {
             totalRun += seg.end - seg.start;
-            addRow(dayLabel, 'Работа', seg.start, String(durMin));
-            addRow(dayLabel, 'Остановка', seg.end, '');
+            addRow(dayLabel, 'Работа', seg.start, String(durMin), product);
+            addRow(dayLabel, 'Остановка', seg.end, '', product);
           } else {
             totalDown += seg.end - seg.start;
-            addRow(dayLabel, 'Простой', seg.start, String(durMin));
+            addRow(dayLabel, 'Простой', seg.start, String(durMin), product);
             if (i < merged.length - 1 && merged[i + 1].state === 1) {
-              addRow(dayLabel, 'Запуск', seg.end, '');
+              addRow(dayLabel, 'Запуск', seg.end, '', product);
             }
           }
         }
@@ -531,7 +539,7 @@ app.get('/report', async (req, res) => {
       // Add a summary row for this line
       const total = totalRun + totalDown;
       const pct = total ? ((totalDown / total) * 100).toFixed(1) + '%' : '0.0%';
-      summary.addRow({ line: lineId, up: (totalRun / 3600).toFixed(1), down: (totalDown / 3600).toFixed(1), pct });
+      summary.addRow({ line: lineId, product, up: (totalRun / 3600).toFixed(1), down: (totalDown / 3600).toFixed(1), pct });
     }
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename="report.xlsx"');
@@ -552,17 +560,20 @@ app.get('/report_clean', async (req, res) => {
     const summary = wb.addWorksheet('Сводка 30 дней');
     summary.columns = [
       { header: 'Линия', key: 'line', width: 12 },
+      { header: 'Номенклатура', key: 'product', width: 16 },
       { header: 'Работа, ч', key: 'up', width: 14 },
       { header: 'Простой, ч', key: 'down', width: 14 },
       { header: '% простоя', key: 'pct', width: 12 },
     ];
     const lines = Array.from({ length: 13 }, (_, i) => `line${i + 1}`);
     for (const lineId of lines) {
+      const product = (settings.products && settings.products[lineId]) || '';
       const sheet = wb.addWorksheet(lineId);
       sheet.columns = [
         { header: 'Дата', key: 'date', width: 12 },
         { header: 'Работа, ч', key: 'up', width: 14 },
         { header: 'Простой, ч', key: 'down', width: 14 },
+        { header: 'Номенклатура', key: 'product', width: 16 },
       ];
       await new Promise((resolve) => {
         agent.getDailyWorkIdle(lineId, 30, (err, daily) => {
@@ -575,11 +586,11 @@ app.get('/report_clean', async (req, res) => {
               const down = daily.down[i];
               runTotal += up;
               downTotal += down;
-              sheet.addRow({ date, up, down });
+              sheet.addRow({ date, up, down, product });
             }
             const total = runTotal + downTotal;
             const pct = total ? ((downTotal / total) * 100).toFixed(1) + '%' : '0.0%';
-            summary.addRow({ line: lineId, up: runTotal.toFixed(1), down: downTotal.toFixed(1), pct });
+            summary.addRow({ line: lineId, product, up: runTotal.toFixed(1), down: downTotal.toFixed(1), pct });
           }
           resolve();
         });
