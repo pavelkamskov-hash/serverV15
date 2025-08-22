@@ -1,209 +1,371 @@
-# -
-хх
-Финальное ТЗ для новой чистой сборки 🧵 Линии: автоматическое определение и включение Что нужно Как будет реализовано Всего 13 линий line1 → line13 Автоматически включаются Как только с линии хоть раз придут данные Без ручного выбора Настройки enabledLines[] не требуются Неактивные не исчезают Показываются всегда (в статусе “нет данных”) 🔄 Обработка данных от ESP32 Устройство Поведение ESP32 шлёт lineId, pulses, duration, ts Если нет связи буферизует и шлёт при восстановлении Если выключили считается остановка (через агент) 1 имп = 1 см фиксированная логика 🧠 Agent / Логика анализа Что считает Как работает Скорость (см/мин) (pulses / duration_ms) * 60000 Сглаживание Скользящее окно (напр. 60 сек, фиксированно) Состояния: RUN / STOP по порогам V_START / V_STOP Задержка перед сменой delayStart, delayStop (например, 30 сек) Необратимые STOP если нет пакетов > N секунд (например, 60с) Нет “прыжков” и “гребёнки” Состояние меняется только при длительном изменении 📊 График производительности (скорости) Что Как работает Отображает скорость (см/мин) По каждой линии, сглаженная Временная шкала: 24ч по умолчанию Показывает пики и спады позволяет судить о загрузке линии Только реальные данные без нолей и выбросов Цвет состояния (фон): RUN / STOP визуально различимы 📈 График за 30 дней: Остановка / Работа Что Как работает Для каждой линии отдельная гистограмма Основа: status_log пишется каждое событие "Запуск"/"Остановка" Простой = STOP с учётом задержек и фильтрации Сглажены короткие скачки < 60 сек — игнорируются Можно навести — увидеть время Подсказка при наведении 📊 Сводный отчёт по 13 линиям (Excel) Что в отчёте Как реализовано Отчёт по каждой линии на вкладке Работа / Простой / События Главная вкладка “Сводка 30 дней” Сумма часов работы и простоев Все данные сглаженные Только через агента, без “сырых” Отключённые / неактивные — включены Статус “0 ч работы” Автоматическая генерация /report и /report_clean 🧑‍💻 Фронтенд Компонент Поведение Левый столбец 13 линий, статус, скорость График скорости Реальная производительность График 30д Простой / работа по дням Настройки В виде информации (не изменяются вручную) 🔧 Общие принципы 💡 Логика переписана с нуля, без накладок и временных решений 📁 Структура сохранена как в оригинале: public/, server.js, smartAgent.js, config.js, docker-compose.yml 🧠 Агент работает стабильно, точно, с настраиваемыми параметрами 🎛 Всё можно менять через веб-интерфейс — без кода и терминала 🔐 Безопасность и доступ Что Детали 🔑 Главная авторизация Как у тебя: логин/пароль через /login 🔒 Настройки защищены Пароль: 19910509 🌐 Сайт изолирован в сети Работает без доступа в интернет 🔁 Доступ по IP:PORT http://192.168.1.245:3000 или localhost:3000 🧠 Логика агента (smartAgent.js) Что считает Как работает 📏 Скорость (см/мин) (pulses / duration_ms) * 60000 ⏱️ Усреднение скорости По скользящему окну (например, 60 сек) 🚦 Работа / Остановка Зависит от порогов V_START, V_STOP 🧘 Задержка фиксации delayStart, delayStop (в секундах) 🧠 Хранение состояний SQLite таблица status_log, pulses, lines 📈 Графики и визуализация Элемент Как работает 📊 График 24 часа По усреднённой скорости, гладко 📉 Простой / работа 30 дней Из логов состояний 🎨 Цветовая индикация Вкл/выкл, статус, скорость 🔁 Автообновление Обновляется без скачков и “гребёнки” 🛠️ Фронтенд (в public/) Файл Изменения index.html Добавлена кнопка “Настройки” charts.html Графики без скачков, плавная анимация settings.html Простое меню настроек (в разработке) login.html Без изменений granulation.html Остался как заглушка ⚙️ Меню настроек (/settings) Параметр Что делает windowSec Окно усреднения, сек (напр. 60) V_START Порог запуска (например, 0.5 см/мин) V_STOP Порог остановки (например, 0.3 см/мин) delayStart Задержка перед фиксацией “работа” (сек) delayStop Задержка перед фиксацией “остановка” (сек) graphHours Глубина графика (24 или 48 часов) enabledLines[] Какие линии включены lineNames Названия линий (для отображения) 📁 Всё сохраняется в config.json, применяется на лету. 🤖 Arduino / ESP32 Что делает Как отправляет Считает импульсы (1 имп = 1 см) каждые 10 сек Хранит буфер при обрыве Wi-Fi да Отправляет: lineId, pulses, duration, ts Пример JSON: { "lineId": "line10", "pulses": 25, "duration": 10000, "ts": 1692922200000 } 📤 API эндпоинты Эндпоинт Назначение POST /data Приём данных от ESP32 GET /status Статус всех линий (RUN/STOP, скорость) GET /chartdata/:id График 24ч + статистика 30д GET /report Excel отчёт по событиям GET /report_clean Упрощённая сводка по дням GET /settings Страница настроек (c паролем) POST /settings/save Сохранение настроек 🐳 Docker Один docker-compose.yml, который запускает: Node.js backend SQLite БД Сервер статических файлов (Express) Всё разворачивается одной командой:
+Here’s a ready-to-paste Codex prompt (in English) that instructs it to generate the entire project from scratch, including all files, code, config, and Docker setup. It’s designed for an offline-friendly, Node.js + Express + SQLite stack, with a smart analysis agent, authentication, reports, and a simple static frontend.
 
-## Timezone
-Set the container timezone via TZ (e.g., `TZ=Etc/GMT-4`) to ensure logs and the /time endpoint report the expected GMT-4 time.
+Prompt for Codex
 
-я новичок, делаю это в первые, сервер будет размещен на локальном компьютере, операционная система Windows но пробную сборку я запускаю через  Docker wls 2. Сервер и сайт нужны для мониторинга скорости линий на станке.
-Ниже — цель системы, её архитектура и полный разбор логики «от датчика до графика и отчёта». Пишу про текущую чистую сборку с нашими договорёнными доработками (без изменения расчётов).
+Goal: Generate a complete, runnable project (from scratch) for monitoring 13 production lines using ESP32 pulse telemetry. The system must ingest data, compute smoothed speed (cm/min) and RUN/STOP state (with hysteresis and delays), visualize 24–48h speed and 30-day run/downtime, and export Excel reports. Everything runs locally on Windows (trial via Docker/WSL2) and does not require internet at runtime.
 
-Зачем эта сборка
+Stack & constraints:
 
-Система непрерывно мониторит 13 производственных линий и отвечает за:
+Node.js LTS (>=18), CommonJS modules.
 
-приём телеметрии от ESP32 (импульсы → пройденные сантиметры);
+Express, express-session, bcryptjs, better-sqlite3 (or sqlite3 if you prefer async), exceljs, ajv for JSON validation, ws or Server-Sent Events (SSE) for live updates, uuid (if needed).
 
-расчёт скорости (см/мин) и состояния линии (RUN/STOP) с фильтрацией шумов;
+No CDN. Put any small JS/CSS under public/. Avoid heavy chart libs; implement lightweight charts with Canvas/SVG in public/js/charts.js.
 
-визуализацию: скорость за 24–48 часов, и «Работа/Простой» по дням за 30 суток;
+Timezone is fixed to UTC+04:00 via process.env.TZ = 'Etc/GMT-4' and explicit formatting.
 
-генерацию Excel-отчётов: сводка по всем линиям + поминутно-событийные ленты по каждой линии;
+Authentication: site login (/login) with bcrypt; settings page additionally guarded by a settings password 19910509.
 
-безопасный доступ: логин на сайт и отдельный пароль на страницу настроек.
-Общая архитектура
+Always render 13 lines (line1 → line13). Lines auto-activate when first data arrives; otherwise show “no data”.
 
-ESP32 → сервер: каждые N секунд ESP32 шлёт пакет JSON:
-{ "lineId": "line10", "pulses": 25, "duration": 10000, "ts": 1692922200000 }
-1 импульс = 1 см (фиксировано).
+Clean file tree; ship everything needed to run locally.
 
-При обрыве Wi-Fi ESP32 буферизует и догружает при восстановлении.
+Deliverables (output format)
 
-Backend (Node.js + Express):
+Output the project as multiple files, each in its own fenced code block with the file path as the info string. Example format:
 
-маршрут POST /data принимает телеметрию и пишет в SQLite;
+// FILE: package.json
+{...}
 
-передаёт точку в агент анализа (smartAgent), который считает скорость/состояние и ведёт логи;
+// FILE: server.js
+<code>
 
-выдаёт данные фронтенду (/status, /chartdata/:lineId) и формирует отчёты (/report, /report_clean).
+// FILE: public/index.html
+<code>
 
-SQLite БД (встроенная, без внешних зависимостей).
 
-Frontend (static в /public):
+Do this for every file you create.
 
-левая панель: 13 линий (всегда), текущая скорость и статус;
+Project structure (create all of these)
+package.json
+Dockerfile
+docker-compose.yml
+README.md
 
-верхний график: сглаженная скорость за 24/48 часов;
+server.js                 # Express app bootstrap
+db.js                     # SQLite init, PRAGMAs, migrations
+smartAgent.js             # smoothing window, hysteresis, delays, watchdog
+auth.js                   # login/session, settings-guard middleware
+routes/
+  ingest.js               # /data, /heartbeat
+  api.js                  # /status, /chartdata/:id, /report, /report_clean, /time
+  settings.js             # /settings (GET UI page), /settings/auth, /settings/save
+  diag.js                 # /healthz, /readyz, /diagnostics (JSON)
+  users.js                # (optional) list users/roles (stub OK)
+public/
+  index.html              # 13 lines panel; live speeds & statuses
+  charts.html             # 24/48h speed + 30d run/stop charts
+  settings.html           # read/write settings (guarded)
+  login.html              # login form
+  granulation.html        # placeholder page
+  css/styles.css
+  js/app.js               # shared UI helpers & auth flows
+  js/api.js               # fetch helpers
+  js/charts.js            # minimal Canvas/SVG charting (line + stacked bars)
+  vendor/README.txt       # note: no CDN; explain offline usage
+config.json               # default settings, users, lines, devices
+data/                     # SQLite database lives here (mounted in Docker)
 
-нижний график: Работа/Простой по дням за 30 суток с подсказками «остановка/запуск/длительность»;
+Functional requirements (implement exactly)
+1) ESP32 → Server ingestion
 
-кнопка «Скачать отчёт за 30 дней».
+POST /data accepts either a single object or a batch array:
 
-Авторизация:
+{
+  "deviceId": "esp32-10",
+  "lineId": "line10",
+  "packetId": 102394,             // required for idempotency
+  "pulses": 25,                    // integer, 1 pulse = 1 cm (fixed)
+  "duration": 10000,               // ms
+  "ts": 1692922200000,             // epoch ms (server will normalize if missing)
+  "fw": "1.2.3"                    // optional
+}
 
-сайт защищён логином: zavod / H0lzH0f2025 (пароль хранится как bcrypt-хэш);
 
-страница настроек дополнительно защищена паролем 19910509;
+If offline, ESP32 buffers and sends { batch: [...] }. Process in ts ascending order.
 
-открыты публично только /data, /healthz, /time, /settings/auth, /login, /logout, /favicon.ico.
+Validate payload with Ajv. On schema error: 400 + log to ingest_errors.
 
-База данных (SQLite)
+Idempotency: enforce unique (deviceId, packetId); ignore duplicates.
 
-Создаются таблицы:
+Record both ts_device and recv_ts_server; compute skew_sec = (ts_device - recv_ts_server)/1000.
 
-status(lineId, isRunning, lastPulseTime, lastPacketTime) — текущее состояние линии;
+POST /heartbeat: { deviceId, lineId, ts } to refresh connectivity without pulses.
 
-status_log(id, lineId, timestamp, isRunning) — события «Запуск/Остановка» (с учётом задержек и гистерезиса);
+2) SmartAgent (smartAgent.js)
 
-pulses(id, lineId, pulses, duration, timestamp) — сырая телеметрия;
+Input: per-line stream of {pulses, duration_ms, ts}.
 
-minute_stats(lineId, ts, speed) — поминутные усреднённые значения скорости для графиков.
+Speed (cm/min): (pulses / duration_ms) * 60000.
 
-Агент анализа (smartAgent.js)
+Smoothing: sliding window windowSec (default 60s). Implement as rolling sums over the window (sum pulses / sum duration) to get a weighted average.
+
+RUN/STOP with hysteresis:
+
+thresholds: V_START (above → RUN), V_STOP (below → STOP),
+
+delays: delayStart, delayStop in seconds; state changes only if speed has stayed beyond threshold for the full delay interval.
+
+Watchdog: if no packets for a line for offlineTimeout (e.g., 60s), force a STOP event.
+
+No “comb/flip-flop”: changes only after sustained conditions; ignore spikes < delay.
+
+Per-line overrides: Support optional agent.perLineOverrides[lineId].
+
+3) Database (SQLite, WAL mode)
+
+Enable WAL and sane PRAGMAs: journal_mode=WAL, synchronous=NORMAL, foreign_keys=ON.
+
+Tables (create all; include indexes):
+
+CREATE TABLE IF NOT EXISTS status(
+  lineId TEXT PRIMARY KEY,
+  isRunning INTEGER NOT NULL,
+  lastPulseTime INTEGER,
+  lastPacketTime INTEGER,
+  smoothedSpeed REAL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS status_log(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  lineId TEXT NOT NULL,
+  timestamp INTEGER NOT NULL,
+  isRunning INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_status_log_line_ts ON status_log(lineId, timestamp);
+
+CREATE TABLE IF NOT EXISTS pulses(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  deviceId TEXT,
+  lineId TEXT NOT NULL,
+  packetId INTEGER NOT NULL,
+  pulses INTEGER NOT NULL,
+  duration INTEGER NOT NULL,
+  ts_device INTEGER,
+  ts_server INTEGER,
+  fw TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_pulses_device_packet ON pulses(deviceId, packetId);
+CREATE INDEX IF NOT EXISTS idx_pulses_line_ts ON pulses(lineId, ts_device);
+
+CREATE TABLE IF NOT EXISTS minute_stats(
+  lineId TEXT NOT NULL,
+  ts INTEGER NOT NULL,         -- bucket start (minute)
+  speed REAL NOT NULL,
+  PRIMARY KEY(lineId, ts)
+);
+CREATE INDEX IF NOT EXISTS idx_minute_stats_line_ts ON minute_stats(lineId, ts);
+
+CREATE TABLE IF NOT EXISTS devices(
+  deviceId TEXT PRIMARY KEY,
+  lineId TEXT NOT NULL,
+  token TEXT,
+  lastSeen INTEGER,
+  fw TEXT
+);
 
-Вход: последовательность пакетов (pulses, duration_ms, ts) по каждой линии.
+CREATE TABLE IF NOT EXISTS audit_log(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user TEXT, action TEXT, ts INTEGER, metadata TEXT
+);
 
-Расчёты:
+CREATE TABLE IF NOT EXISTS downtime_reasons(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  lineId TEXT, start INTEGER, end INTEGER,
+  code TEXT, comment TEXT, user TEXT
+);
 
-Скорость пакета:
-speed_cm_per_min = (pulses / duration_ms) * 60000
+CREATE TABLE IF NOT EXISTS ingest_errors(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts INTEGER, deviceId TEXT, payload TEXT, error TEXT
+);
 
-Сглаживание (скользящее окно):
-фиксированное окно windowSec (например, 60 с). Фактически получается взвешенное среднее по сумме импульсов/длительностей за окно.
 
-Определение RUN/STOP (гистерезис):
+Nightly maintenance endpoints (admin-only): POST /api/maintenance/vacuum, POST /api/maintenance/rebuild-minute-stats?from=...&to=...&lineId=....
 
-два порога: V_START (выше — считаем «работает»), V_STOP (ниже — «остановка»);
+4) Settings (config.json; hot-reload)
 
-задержки фиксации delayStart / delayStop (например, 30 с): состояние меняется только если скорость стабильно по ту сторону порога весь интервал задержки;
+Example default:
 
-итог: нет «пилы»/«гребёнки», короткие всплески игнорируются.
+{
+  "auth": {
+    "users": [{ "username": "zavod", "passHash": null }],  // on first login, hash and persist
+    "settingsPassword": "19910509",
+    "roles": { "zavod": "manager" }
+  },
+  "agent": {
+    "windowSec": 60,
+    "V_START": 0.5,
+    "V_STOP": 0.3,
+    "delayStart": 30,
+    "delayStop": 30,
+    "offlineTimeout": 60,
+    "perLineOverrides": {}
+  },
+  "ui": { "theme": "dark", "graphHours": 24, "locale": "en" },
+  "lines": {
+    "line01": { "name": "Line 1", "enabled": true,  "product": "" },
+    "line02": { "name": "Line 2", "enabled": true,  "product": "" },
+    "line03": { "name": "Line 3", "enabled": true,  "product": "" },
+    "line04": { "name": "Line 4", "enabled": true,  "product": "" },
+    "line05": { "name": "Line 5", "enabled": true,  "product": "" },
+    "line06": { "name": "Line 6", "enabled": true,  "product": "" },
+    "line07": { "name": "Line 7", "enabled": true,  "product": "" },
+    "line08": { "name": "Line 8", "enabled": true,  "product": "" },
+    "line09": { "name": "Line 9", "enabled": true,  "product": "" },
+    "line10": { "name": "Line 10", "enabled": true, "product": "" },
+    "line11": { "name": "Line 11", "enabled": true, "product": "" },
+    "line12": { "name": "Line 12", "enabled": true, "product": "" },
+    "line13": { "name": "Line 13", "enabled": true, "product": "" }
+  },
+  "devices": {
+    "esp32-10": { "lineId": "line10", "token": "CHANGE_ME" }
+  },
+  "shifts": [],
+  "plannedDowntime": []
+}
 
-Watchdog (нет пакетов → STOP):
 
-серверный таймер проверяет lastPacketTime; если пауза длиннее offlineTimeout (например, 60 с), агент принудительно фиксирует STOP и пишет событие в status_log.
+/settings page: read/write JSON fields above (with role check), but do not require restarting. Persist to config.json, broadcast changes to agent.
 
-Агрегирование для графиков:
+5) Authentication & authorization
 
-поминутно усредняет скорость (из сглаженного потока) и пишет в minute_stats;
+/login (GET/POST): session cookie; bcrypt compare. If passHash is null, accept plaintext password once, hash with bcrypt, persist to config.json.
 
-журнал событий status_log используется для построения 30-дневной диаграммы работы/простоя и для отчётов.
+/logout (GET) ends session.
 
-Важно: мы не меняем ни формулы, ни параметры расчётов. Всё управление порогами/окном/задержками — только через настройки (и доступно для чтения/просмотра в UI).
+Route guard middleware: login required for all pages except /data, /heartbeat, /healthz, /readyz, /time, /settings/auth, /login, /logout, /favicon.ico, and static assets.
 
-Маршруты (API)
+/settings requires a second step: POST /settings/auth with password 19910509 stored in config.json (can be hashed later); then allow read/write.
 
-POST /data — приём телеметрии от ESP32. Нормализует ts (сек/мс) → сохраняет в pulses → даёт агенту → при смене состояния пишет в status_log → обновляет status.
+audit_log every settings change and report generation (user, timestamp, diff).
 
-GET /status — список 13 линий всегда (даже без данных): имя, статус (RUN/STOP/нет данных), текущая сглаженная скорость (если есть), продукт (если указан в настройках).
+6) API routes (implement all)
 
-GET /chartdata/:lineId — данные для графиков:
+POST /data: ingest (see §1).
 
-верхний график: массив labels (минутные метки за 24/48ч) уже отформатирован в локальном времени YYYY-MM-DD HH:mm (UTC+04:00), и data (сглаженная скорость),
+POST /heartbeat: update device lastSeen.
 
-нижний график: по каждому из 30 дней — часы «Работа/Простой», плюс events (сегменты дня) для подсказок:
-{ "start": 1692873600, "end": 1692878700, "state": 0, "startStr": "12:43", "endStr": "13:58", "durMin": 75 }
-сегменты < 60 с схлопываются к соседнему состоянию (как в отчётах).
+GET /status: always return 13 lines ≙ [{ lineId, name, isRunning, speed, lastPacketTime, online, product }]. Lines without data: isRunning=null, speed=null, online=false.
 
-GET /report — Excel за 30 дней:
+GET /chartdata/:lineId:
 
-Лист «Сводка 30 дней»: по каждой линии — часы «Работа/Простой» и %.
+Top chart: minute labels for the past graphHours (24 or 48) in UTC+04:00 (YYYY-MM-DD HH:mm) and smoothed speeds (no zero padding). Hide outliers > 3×P95 in UI only.
 
-13 листов по линиям: текстовая лента событий типа
-2025-08-21 запуск 12:43 (Изделие)
-2025-08-21 работа 24 часа (Изделие)
-2025-08-22 остановка 12:43 (Изделие)
-2025-08-22 простой 1 час (Изделие)
-(название изделия — из settings.products[lineId], без изменения схемы БД).
+Bottom chart: 30-day RUN/STOP bars from status_log, with segments < 60s merged; tooltips include startStr, endStr, durMin, and state.
 
-GET /report_clean — упрощённая сводка (часы по дням).
+GET /report?from=YYYY-MM-DD&to=YYYY-MM-DD (default last 30 days):
 
-GET /settings + POST /settings/save — просмотр/сохранение настроек (защищены паролем 19910509).
+Excel with a “Summary 30 days” sheet (per line: RUN hours, STOP hours, % util).
 
-GET /login, POST /login, GET /logout — авторизация на сайт (сессии, bcrypt).
+13 per-line sheets: chronological “Start/Stop” events with HH:mm and (if set) product.
 
-Время и тайзона
+GET /report_clean?from=...&to=...: compact CSV/Excel with daily RUN/STOP hours per line.
 
-Сервер работает в фиксированной тайзоне UTC+04:00 (через process.env.TZ = 'Etc/GMT-4' и/или явный сдвиг +4 часа в форматтерах).
+GET /time: returns server time and TZ.
 
-Все подписи времени для графиков и отчётов формируются в этом часовом поясе:
+GET /healthz: basic OK.
 
-верхний график скорости: YYYY-MM-DD HH:mm;
+GET /readyz: DB/file permissions check, WAL status, disk free.
 
-нижний график: всплывающие подсказки «Остановка/Запуск/…» показывают HH:mm и длительность.
+GET /diagnostics (HTML) + GET /api/diagnostics (JSON): versions, WAL on/off, free disk, last backup timestamp, lag, ingest error counts, device lastSeen, and buttons to run maintenance.
 
-Фронтенд (интерфейс)
+7) Frontend (static)
 
-Левая панель — 13 линий всегда:
+index.html: left column of 13 lines (always visible). Show name, status color (RUN/STOP/No Data), smoothed speed, connectivity icon, product badge; mini sparkline (last 60 min).
 
-имя (из config.json/lineNames), статус, текущая сглаженная скорость;
+charts.html: top: 24/48h line chart of speed (Canvas/SVG), bottom: 30-day stacked bar RUN/STOP with hover tooltips. Buttons: 6h/12h/24h/48h zoom; “Download PNG”, “CSV”.
 
-«нет данных» — если ещё не приходили пакеты.
+settings.html: read/write settings (with secondary auth). Tabs: Agent, Lines, Devices, Shifts/Planned downtime, Backups. Display current TZ.
 
-Верхний график — реальная производительность (см/мин) за 24/48 часов:
+login.html: username/password form.
 
-метки оси X — часы (понятно «когда» была просадка/пик);
+granulation.html: keep as placeholder.
 
-данные — сглаженные (никаких «ступенек»).
+Use SSE or WS for live /status updates at ~5s.
 
-Нижний график — «Работа/Простой» за 30 дней:
+8) Reports (exceljs)
 
-стек-диаграмма по дням;
+Include header with: TZ (UTC+04:00), generation timestamp, agent parameters.
 
-при наведении — время остановки, пуска и длительность каждого сегмента дня (после схлопывания коротких).
+Conditional formatting: green for RUN hours, red for STOP.
 
-Кнопка «Скачать отчёт за 30 дней» — запускает /report.
+Add link to audit_log and the requesting username.
 
-Страница настроек (/settings) — только просмотр/правка параметров (без изменения из кода).
+9) Diagnostics & Maintenance
 
-Замечание: чтобы UI работал без интернета, внешние библиотеки (Tailwind/Chart.js) желательно локально положить в public/ (сейчас обычно подгружаются с CDN).
+Endpoint to backup DB to backups/monitor_YYYYMMDD.sqlite3 (keep last 30).
 
-Настройки
+Nightly jobs (via simple setInterval schedulers): VACUUM, REINDEX, rotate logs. Expose buttons in /diagnostics.
 
-Хранятся в config.json (и применяются «на лету», без правки кода):
+Show WAL status, ingest error count (24h), and lastSeen per device.
 
-windowSec, V_START, V_STOP, delayStart, delayStop, graphHours (24/48), offlineTimeout;
+10) Docker & WSL2
 
-enabledLines[] (используется для UI; линии всё равно видны все 13);
+Dockerfile and docker-compose.yml:
 
-lineNames (подписи в интерфейсе), products (названия изделия на линиях — идут в отчёт/подсказки);
+Mount ./data:/app/data (DB), ./config.json:/app/config.json (bind), ./backups:/app/backups.
 
-доступ к сохранению — только после /settings/auth с паролем 19910509.
+TZ=Etc/GMT-4 in environment.
 
-Docker
+Healthcheck for Express.
 
-Один docker-compose.yml запускает:
+Expose port 3000 (access at http://localhost:3000 or http://192.168.1.245:3000 in LAN).
 
-Node.js backend (Express),
+Non-functional requirements
 
-SQLite (локальный файл),
+Code should be clean and commented.
 
-статику /public.
+No crashes on malformed input (log to ingest_errors).
 
-Сайт изолирован в сети, доступен по http://<IP>:3000. Интернета не требует (кроме CDN библиотек в UI, если их не положить локально).
+All timestamps stored as epoch ms; all formatting in UTC+04:00.
 
-Ключевые принципы и гарантии
+Unit of measure is fixed: 1 pulse = 1 cm.
 
-13 линий — всегда на экране (активируются автоматически при первом пакете).
+Default 13 lines are always returned even if no data received.
 
-Скорость/состояния считают только «чистым» алгоритмом агента, без вставок/подправлений.
+Keep UI snappy; do not block on long queries (use indexes).
 
-Отчёты используют те же логику и схлопывание коротких сегментов, что и графики — всё согласовано.
+All settings changes are hot-applied (no restart).
 
-Безопасность: логин на сайт (bcrypt-хэш), отдельный пароль на настройки, минимум открытых маршрутов.
+Extras (create stubs if time is short)
 
-## Дополнения
-- Пример прошивки ESP32 расположен в каталоге `arduino/`.
-- Пользовательские роли и хэши паролей находятся в `auth/users.json`.
-- Пояснения к параметрам в `docs/SETTINGS.md`.
+/api/downtime-reasons to attach a reason to a STOP interval (store in downtime_reasons), and show in tooltips/report.
 
+/api/devices to list/register devices and tokens.
+
+Webhook config /hooks (post events to local URL) — stub OK.
+
+Role model (viewer/operator/manager/admin) — minimal middleware stubs OK.
+
+README.md must include
+
+Prereqs (Node/Docker/WSL2), how to run with Docker and without.
+
+Windows Firewall note (open 3000/TCP for local subnet).
+
+First login steps (hash bootstrap), secondary settings password, how to change passwords.
+
+Example ESP32 payloads and curl commands.
+
+How to enable WAL and where DB files live.
+
+Backup/restore steps.
+
+Acceptance checks
+
+Sending sample /data updates speed and status; RUN/STOP flips only after sustained thresholds + delays.
+
+/status returns 13 lines always; lines with no data show null speed and No Data.
+
+/chartdata/:id returns minute buckets and 30-day events with merged <60s segments.
+
+/report generates an Excel with a summary and 13 sheets.
+
+/login works; /settings prompts for secondary password; edits persist to config.json and are applied live.
+
+/diagnostics shows WAL, disk, last backup, and maintenance actions work.
+
+Docker build up -d runs and serves on 3000.
+
+Now generate the full project with all files and code, using one fenced block per file as described above.
