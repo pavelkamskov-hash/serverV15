@@ -10,6 +10,8 @@
  * access the settings page.
  */
 
+process.env.TZ = 'Etc/GMT-4';
+
 const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
@@ -30,6 +32,11 @@ const { Agent } = require('./smartAgent');
 // defaults are returned based on the committed version of config.json.
 
 const SETTINGS_PATH = path.join(__dirname, 'config.json');
+
+function formatLocal(date) {
+  const pad = (n) => n.toString().padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 /**
  * Load settings from disk.  If the settings file does not exist the
@@ -423,7 +430,7 @@ app.get('/report', async (req, res) => {
       ];
       // Helper to add a row to the worksheet
       function addRow(date, ev, whenTs, extra) {
-        const whenStr = new Date(whenTs * 1000).toISOString().replace('T', ' ').substring(0, 19);
+        const whenStr = formatLocal(new Date(whenTs * 1000));
         ws.addRow({ date, ev, when: whenStr, downtime: extra });
       }
       // Determine the state at fromTs
@@ -453,7 +460,7 @@ app.get('/report', async (req, res) => {
       let prevState = initial;
       for (let dayStart = Math.floor(fromTs / 86400) * 86400; dayStart < toTs; dayStart += 86400) {
         const dayEnd = Math.min(dayStart + 86400, toTs);
-        const dayLabel = new Date(dayStart * 1000).toISOString().slice(0, 10);
+        const dayLabel = formatLocal(new Date(dayStart * 1000)).slice(0, 10);
         // Build raw segments for this day
         const dayEvents = logs.filter((ev) => ev.timestamp >= dayStart && ev.timestamp < dayEnd);
         let state = prevState;
