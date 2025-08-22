@@ -679,8 +679,6 @@ class Handler(BaseHTTPRequestHandler):
         gh = int(to_num(data.get('graphHours'), settings.get('graphHours', 24)))
         new_cfg['graphHours'] = gh if gh in (24, 48) else settings.get('graphHours', 24)
         new_cfg['offlineTimeout'] = int(to_num(data.get('offlineTimeout'), settings.get('offlineTimeout', 60)))
-        if isinstance(data.get('enabledLines'), list):
-            new_cfg['enabledLines'] = [str(x) for x in data.get('enabledLines')]
         if isinstance(data.get('lineNames'), dict):
             names = {}
             for i in range(1, 14):

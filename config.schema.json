@@ -43,11 +43,6 @@
       "description": "Display names for the 13 lines",
       "additionalProperties": { "type": "string" }
     },
-    "enabledLines": {
-      "type": "array",
-      "description": "Lines included in processing; inactive lines still appear in the UI",
-      "items": { "type": "string" }
-    },
     "settingsPassword": {
       "type": "string",
       "description": "Password required to authorise changes via the settings page"
