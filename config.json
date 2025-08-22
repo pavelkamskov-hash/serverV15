@@ -1,0 +1,29 @@
+{
+  "agent": {
+    "windowSec": 60,
+    "V_START": 0.5,
+    "V_STOP": 0.3,
+    "delayStart": 30,
+    "delayStop": 30,
+    "offlineTimeout": 60
+  },
+  "lines": {
+    "line1": "Линия 1",
+    "line2": "Линия 2",
+    "line3": "Линия 3",
+    "line4": "Линия 4",
+    "line5": "Линия 5",
+    "line6": "Линия 6",
+    "line7": "Линия 7",
+    "line8": "Линия 8",
+    "line9": "Линия 9",
+    "line10": "Линия 10",
+    "line11": "Линия 11",
+    "line12": "Линия 12",
+    "line13": "Линия 13"
+  },
+  "users": {
+    "admin": "$2a$10$hzruAjnXZ0.pO40/3KaAreDaV6V0lhdT.xpfHiiYFvmo7HLGZMUC."
+  },
+  "settingsPassword": "19910509"
+}
